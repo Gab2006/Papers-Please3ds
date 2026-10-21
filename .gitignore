@@ -1,0 +1,53 @@
+# ==========================================
+# Papers, Please 3DS - .gitignore
+# File non necessari al funzionamento del gioco
+# ==========================================
+
+# File binari e pacchetti ROM compilati (CXI, CIA, 3DS, ELF, ecc.)
+*.cxi
+*.cia
+*.3ds
+*.3dsx
+*.elf
+*.smdh
+*.bin
+
+# Script Python di utility ed elaborazione asset
+*.py
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# File scratch e bozze temporanee di sviluppo
+scratch_*
+scratch/
+*.tmp
+*.bak
+
+# Screenshot catturati da console/emulatore (LPP-3DS salva BMP con tasto L)
+*.bmp
+screenshots/
+
+# Configurazione agenti e toolchain locale
+.agents/
+skills-lock.json
+
+# File di sistema operativo (Windows, macOS, Linux)
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.AppleDouble
+._*
+
+# Configurazioni IDE ed editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
