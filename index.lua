@@ -154,6 +154,15 @@ function GarbageCollection()
 		NEWS_TEX = nil
 		NEWS_TEX_DAY = nil
 	end
+	if BULLETIN_BTM_TEX then
+		Graphics.freeImage(BULLETIN_BTM_TEX)
+		BULLETIN_BTM_TEX = nil
+	end
+	if OPENCHECKPOINT_TEX then
+		Graphics.freeImage(OPENCHECKPOINT_TEX)
+		OPENCHECKPOINT_TEX = nil
+	end
+	OPENCHECKPOINT_TRIED = nil
 	if DAYSUMMARY_BKG_TEX then
 		Graphics.freeImage(DAYSUMMARY_BKG_TEX)
 		DAYSUMMARY_BKG_TEX = nil
@@ -213,7 +222,7 @@ CheckPoint = 1
 stamp="YES" 
 Options={
 	["Shadow"] = 1, -- 0 - to Off Shadow; 1 - to On Shadow
-	["TextAlign"] = 0, -- 0 - no align function (increases FPS(for Old3DS)); 1 - Turn on centered text
+	["TextAlign"] = 1, -- 0 - no align function (increases FPS(for Old3DS)); 1 - Turn on centered text
 	["NiceShutter"] = 1, -- 0 - to Off Shutter Animation; 1 - to On Shutter Animation
 	["Car"] = 1, -- 0 to Delete Car from Screen; 1 to Add it
 	["Dialog"] = 1,
@@ -285,6 +294,9 @@ DAY_TIME_OFFSET = 0
 DAY_OVER = false
 NEWS_TEX = nil
 NEWS_TEX_DAY = nil
+BULLETIN_BTM_TEX = nil
+OPENCHECKPOINT_TEX = nil
+OPENCHECKPOINT_TRIED = nil
 FADE_STATE = "NONE"
 FADE_ALPHA = 0
 CURRENT_SAVE = { day = 1, in_progress = 0 }
@@ -2150,13 +2162,13 @@ while true do
 		Graphics.drawImage(-40,TITLEy,Title)
 		if TITLEy<-128 and CURRENT_SAVE then
 			if CURRENT_SAVE.in_progress == 1 then
-				GPU_DrawText(160, 168, "SALVATAGGIO DISPONIBILE", Color.new(220, 200, 130), "c", 320, SMALL_FONT, 7)
-				GPU_DrawText(160, 180, "GIORNO "..CURRENT_SAVE.day.." - IN CORSO", Color.new(200, 180, 110), "c", 320, SMALL_FONT, 7)
+				GPU_DrawText(160, 168, "SAVED GAME AVAILABLE", Color.new(220, 200, 130), "c", 320, SMALL_FONT, 7)
+				GPU_DrawText(160, 180, "DAY "..CURRENT_SAVE.day.." - IN PROGRESS", Color.new(200, 180, 110), "c", 320, SMALL_FONT, 7)
 			else
-				GPU_DrawText(160, 172, "MODALITA' STORIA: GIORNO "..CURRENT_SAVE.day, Color.new(180, 180, 180), "c", 320, SMALL_FONT, 7)
+				GPU_DrawText(160, 172, "STORY MODE: DAY "..CURRENT_SAVE.day, Color.new(180, 180, 180), "c", 320, SMALL_FONT, 7)
 			end
 			if (CURRENT_SAVE.day and CURRENT_SAVE.day > 1) or CURRENT_SAVE.in_progress == 1 then
-				GPU_DrawText(160, 204, "[X] RICOMINCIA DA CAPO", Color.new(150, 110, 110), "c", 320, SMALL_FONT, 7)
+				GPU_DrawText(160, 204, "[X] RESTART FROM DAY 1", Color.new(150, 110, 110), "c", 320, SMALL_FONT, 7)
 			end
 		end
 		screenshotmake()
@@ -2240,8 +2252,8 @@ while true do
 		ScreenButton(96,132,MAINMENUbutton,0,MAINMENU)
 		ScreenButton(96,162,QUITbutton,"Exit",QUIT)
 		if IS_STORY_MODE then
-			GPU_DrawText(160, 192, "MODALITA' STORIA: PARTITA SALVATA ALL'USCITA", Color.new(200, 190, 150), "c", 320, SMALL_FONT, 7)
-			GPU_DrawText(160, 206, "GIORNO "..CURRENT_DAY.." - "..DAY_INSPECTED_COUNT.." ISPEZIONI COMPLETATE", Color.new(160, 150, 120), "c", 320, SMALL_FONT, 7)
+			GPU_DrawText(160, 192, "STORY MODE: PROGRESS SAVED ON EXIT", Color.new(200, 190, 150), "c", 320, SMALL_FONT, 7)
+			GPU_DrawText(160, 206, "DAY "..CURRENT_DAY.." - "..DAY_INSPECTED_COUNT.." INSPECTIONS COMPLETED", Color.new(160, 150, 120), "c", 320, SMALL_FONT, 7)
 		end
 		if Controls.check(pad, KEY_START) and not Controls.check(oldpad, KEY_START) then
 			Timer.resume(GameTIME)
@@ -2269,13 +2281,19 @@ while true do
 		elseif menu=="DayIntro" then
 		local day_cfg = DAYS_CONFIG[CURRENT_DAY] or DAYS_CONFIG[1]
 
-		-- [LAZY-LOAD AUTHENTIC NEWSPAPER TEXTURE]
+		-- [LAZY-LOAD AUTHENTIC BULLETIN & NEWSPAPER TEXTURES]
+		if BULLETIN_BTM_TEX == nil then
+			BULLETIN_BTM_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_BULLETIN_BTM.png")
+		end
 		if NEWS_TEX == nil or NEWS_TEX_DAY ~= CURRENT_DAY then
 			if NEWS_TEX then Graphics.freeImage(NEWS_TEX) end
 			local n_day = CURRENT_DAY
 			if n_day < 1 or n_day > 4 then n_day = 1 end
 			local news_path = System.currentDirectory().."ASSETS/NEWS_DAY"..n_day..".png"
 			NEWS_TEX = Graphics.loadImage(news_path)
+			if NEWS_TEX == nil then
+				NEWS_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_BULLETIN_TOP.png")
+			end
 			NEWS_TEX_DAY = CURRENT_DAY
 		end
 
@@ -2300,44 +2318,100 @@ while true do
 
 		-- [BOTTOM SCREEN: MINISTRY OF ADMISSION OFFICIAL BULLETIN]
 		Graphics.initBlend(BOTTOM_SCREEN)
-		Graphics.fillRect(0, 320, 0, 240, Color.new(28, 24, 24))
+		if BULLETIN_BTM_TEX then
+			Graphics.drawImage(0, 0, BULLETIN_BTM_TEX)
+		else
+			Graphics.fillRect(0, 320, 0, 240, Color.new(28, 24, 24))
+			-- Paper document background with double border
+			Graphics.fillRect(10, 310, 8, 232, Color.new(236, 230, 218))
+			Graphics.fillEmptyRect(10, 310, 8, 232, Color.new(110, 90, 70))
+			Graphics.fillEmptyRect(12, 308, 10, 230, Color.new(170, 150, 130))
+			-- Crimson header banner
+			Graphics.fillRect(12, 308, 10, 42, Color.new(82, 34, 34))
+		end
 		
-		-- Paper document background with double border
-		Graphics.fillRect(10, 310, 8, 232, Color.new(236, 230, 218))
-		Graphics.fillEmptyRect(10, 310, 8, 232, Color.new(110, 90, 70))
-		Graphics.fillEmptyRect(12, 308, 10, 230, Color.new(170, 150, 130))
-		
-		-- Crimson header banner
-		Graphics.fillRect(12, 308, 10, 42, Color.new(135, 25, 25))
 		GPU_DrawText(160, 14, "MINISTRY OF ADMISSION", WHITE, "c", 320, NORMAL_FONT, 8)
 		GPU_DrawText(160, 28, "OFFICIAL DIRECTIVE - DAY "..CURRENT_DAY.." - "..day_cfg.date, Color.new(230, 210, 210), "c", 320, SMALL_FONT, 7)
 		
 		-- Subheader
 		GPU_DrawText(20, 46, "ARSTOTZKA BORDER CONTROL - GRESTIN CHECKPOINT", Color.new(70, 60, 50), "l", 320, SMALL_FONT, 7)
-		Graphics.fillRect(20, 300, 58, 60, Color.new(120, 100, 80))
+		if BULLETIN_BTM_TEX == nil then
+			Graphics.fillRect(20, 300, 58, 60, Color.new(120, 100, 80))
+		end
 		
 		-- Directives / Rules
 		local rule_y = 66
 		for idx, rule in ipairs(day_cfg.bulletin_rules) do
-			Graphics.fillRect(20, 24, rule_y + 3, rule_y + 7, Color.new(135, 25, 25))
+			if BULLETIN_BTM_TEX == nil then
+				Graphics.fillRect(20, 24, rule_y + 3, rule_y + 7, Color.new(82, 34, 34))
+			end
 			GPU_DrawText(28, rule_y, rule, Color.new(20, 20, 20), "l", 320, SMALL_FONT, 7)
 			rule_y = rule_y + 18
 		end
 		
 		-- Shift info line
-		Graphics.fillRect(20, 300, 148, 150, Color.new(180, 160, 140))
-		GPU_DrawText(160, 154, "TURNO: 09:00 - 18:00  |  PENALITA' PER INFRAZIONI", Color.new(80, 70, 60), "c", 320, SMALL_FONT, 7)
-		
-		DAY_INTRO_BTN = DAY_INTRO_BTN or {touched = false}
-		if TOUCHx>=45 and TOUCHx<=275 and TOUCHy>=172 and TOUCHy<=208 then
-			Graphics.fillRect(45,275,172,208,Color.new(90,170,90))
-			DAY_INTRO_BTN.touched = true
-		else
-			Graphics.fillRect(45,275,172,208,Color.new(45,130,45))
+		if BULLETIN_BTM_TEX == nil then
+			Graphics.fillRect(20, 300, 148, 150, Color.new(180, 160, 140))
 		end
-		Graphics.fillEmptyRect(45,275,172,208,Color.new(20,70,20))
-		GPU_DrawText(160, 185, "APRI CHECKPOINT (A)", WHITE, "c", 320, NORMAL_FONT, 8)
-		GPU_DrawText(160, 218, "PREMI (B) PER IL MENU", Color.new(100, 90, 80), "c", 320, SMALL_FONT, 7)
+		GPU_DrawText(160, 149, "SHIFT: 09:00 - 18:00  |  PENALTIES FOR CITATIONS", Color.new(80, 70, 60), "c", 320, SMALL_FONT, 7)
+		
+		-- Custom Checkpoint Button (ASSETS/CHECKPOINTbutton.png)
+		if OPENCHECKPOINT_TEX == nil and not OPENCHECKPOINT_TRIED then
+			OPENCHECKPOINT_TRIED = true
+			local btn_path = System.currentDirectory().."ASSETS/CHECKPOINTbutton.png"
+			local exists = false
+			if System and System.doesFileExist then
+				exists = System.doesFileExist(btn_path)
+			end
+			if not exists then
+				btn_path = System.currentDirectory().."ASSETS/OPENCHECKPOINTbutton.png"
+				if System and System.doesFileExist then
+					exists = System.doesFileExist(btn_path)
+				end
+			end
+			if exists then
+				pcall(function()
+					OPENCHECKPOINT_TEX = Graphics.loadImage(btn_path)
+				end)
+			end
+		end
+
+		local btn_w = 129
+		local btn_h = 19
+		local btn_x = 95
+		local btn_y = 175
+
+		if OPENCHECKPOINT_TEX then
+			btn_w = Graphics.getImageWidth(OPENCHECKPOINT_TEX)
+			btn_h = math.floor(Graphics.getImageHeight(OPENCHECKPOINT_TEX) / 2)
+			btn_x = math.floor((320 - btn_w) / 2)
+		end
+
+		DAY_INTRO_BTN = DAY_INTRO_BTN or {touched = false}
+		if TOUCHx>0 and TOUCHy>0 then
+			if TOUCHx>=btn_x and TOUCHx<=btn_x+btn_w and TOUCHy>=btn_y and TOUCHy<=btn_y+btn_h then
+				DAY_INTRO_BTN.touched = true
+			else
+				DAY_INTRO_BTN.touched = false
+			end
+		end
+
+		if OPENCHECKPOINT_TEX then
+			if DAY_INTRO_BTN.touched and TOUCHx>0 and TOUCHy>0 then
+				Graphics.drawPartialImage(btn_x, btn_y, 0, btn_h, btn_w, btn_h, OPENCHECKPOINT_TEX)
+			else
+				Graphics.drawPartialImage(btn_x, btn_y, 0, 0, btn_w, btn_h, OPENCHECKPOINT_TEX)
+			end
+			GPU_DrawText(160, 198, "PRESS (A) OR TAP TO OPEN", Color.new(110, 100, 90), "c", 320, SMALL_FONT, 7)
+		else
+			local btn_text_col = Color.new(35, 30, 30)
+			if DAY_INTRO_BTN.touched and TOUCHx>0 and TOUCHy>0 then
+				btn_text_col = Color.new(90, 36, 36)
+			end
+			GPU_DrawText(160, 182, "[ OPEN CHECKPOINT (A) ]", btn_text_col, "c", 320, NORMAL_FONT, 8)
+		end
+		
+		GPU_DrawText(160, 218, "PRESS (B) FOR MENU", Color.new(100, 90, 80), "c", 320, SMALL_FONT, 7)
 		
 		if (TOUCHx==0 and TOUCHy==0 and DAY_INTRO_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A)) then
 			DAY_INTRO_BTN.touched = false
@@ -2346,6 +2420,15 @@ while true do
 				NEWS_TEX = nil
 				NEWS_TEX_DAY = nil
 			end
+			if BULLETIN_BTM_TEX then
+				Graphics.freeImage(BULLETIN_BTM_TEX)
+				BULLETIN_BTM_TEX = nil
+			end
+			if OPENCHECKPOINT_TEX then
+				Graphics.freeImage(OPENCHECKPOINT_TEX)
+				OPENCHECKPOINT_TEX = nil
+			end
+			OPENCHECKPOINT_TRIED = nil
 			if BKG_BTMS==nil then
 				loadtex()
 			end
@@ -2387,6 +2470,15 @@ while true do
 				NEWS_TEX = nil
 				NEWS_TEX_DAY = nil
 			end
+			if BULLETIN_BTM_TEX then
+				Graphics.freeImage(BULLETIN_BTM_TEX)
+				BULLETIN_BTM_TEX = nil
+			end
+			if OPENCHECKPOINT_TEX then
+				Graphics.freeImage(OPENCHECKPOINT_TEX)
+				OPENCHECKPOINT_TEX = nil
+			end
+			OPENCHECKPOINT_TRIED = nil
 			IS_STORY_MODE = false
 			menu = 0
 		end
@@ -2410,8 +2502,8 @@ while true do
 		end
 		GPU_DrawText(200, 24, "MINISTRY OF ADMISSION", Color.new(225, 215, 200), "c", 400, NORMAL_FONT, 8)
 		GPU_DrawText(200, 42, "GRESTIN BORDER CHECKPOINT", Color.new(180, 170, 160), "c", 400, SMALL_FONT, 7)
-		GPU_DrawText(200, 70, "CHECKPOINT CLOSED - 18:00", RED, "c", 400, NORMAL_FONT, 8)
-		GPU_DrawText(200, 98, "FINE DEL TURNO - GIORNO "..CURRENT_DAY, WHITE, "c", 400, NORMAL_FONT, 8)
+		GPU_DrawText(200, 70, "CHECKPOINT CLOSED - 18:00", Color.new(180, 50, 50), "c", 400, NORMAL_FONT, 8)
+		GPU_DrawText(200, 98, "END OF SHIFT - DAY "..CURRENT_DAY, WHITE, "c", 400, NORMAL_FONT, 8)
 		if FADE_ALPHA > 0 then
 			Graphics.fillRect(0, 400, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
 		end
@@ -2428,21 +2520,21 @@ while true do
 			Graphics.fillEmptyRect(15, 305, 12, 228, Color.new(100, 80, 60))
 		end
 		
-		GPU_DrawText(160, 64, "RESOCONTO ISPEZIONE GIORNALIERA", Color.new(120, 25, 25), "c", 320, NORMAL_FONT, 8)
-		Graphics.fillRect(35, 285, 73, 75, Color.new(135, 35, 35))
+		GPU_DrawText(160, 64, "DAILY INSPECTION REPORT", Color.new(82, 34, 34), "c", 320, NORMAL_FONT, 8)
+		Graphics.fillRect(35, 285, 73, 75, Color.new(82, 34, 34))
 		
-		GPU_DrawText(35, 84, "VIAGGIATORI ESAMINATI:", Color.new(40, 40, 40), "l", 320, SMALL_FONT, 7)
+		GPU_DrawText(35, 84, "ENTRANTS PROCESSED:", Color.new(40, 40, 40), "l", 320, SMALL_FONT, 7)
 		GPU_DrawText(280, 84, tostring(DAY_INSPECTED_COUNT), Color.new(20, 20, 20), "r", 320, NORMAL_FONT, 8)
 		
-		GPU_DrawText(35, 104, "TIMBRI CORRETTI:", Color.new(25, 95, 25), "l", 320, SMALL_FONT, 7)
+		GPU_DrawText(35, 104, "CORRECT DECISIONS:", Color.new(25, 95, 25), "l", 320, SMALL_FONT, 7)
 		GPU_DrawText(280, 104, tostring(DAY_CORRECT_COUNT), Color.new(20, 95, 20), "r", 320, NORMAL_FONT, 8)
 		
-		GPU_DrawText(35, 124, "INFRAZIONI / ERRORI:", RED, "l", 320, SMALL_FONT, 7)
-		GPU_DrawText(280, 124, tostring(DAY_MISTAKES_COUNT), RED, "r", 320, NORMAL_FONT, 8)
+		GPU_DrawText(35, 124, "CITATIONS / VIOLATIONS:", Color.new(180, 50, 50), "l", 320, SMALL_FONT, 7)
+		GPU_DrawText(280, 124, tostring(DAY_MISTAKES_COUNT), Color.new(180, 50, 50), "r", 320, NORMAL_FONT, 8)
 		
 		DAY_NEXT_BTN = DAY_NEXT_BTN or {touched = false}
 		if CURRENT_DAY < #DAYS_CONFIG then
-			GPU_DrawText(160, 144, "GIORNO "..CURRENT_DAY.." SUPERATO!", Color.new(25, 100, 25), "c", 320, NORMAL_FONT, 8)
+			GPU_DrawText(160, 144, "DAY "..CURRENT_DAY.." COMPLETE!", Color.new(25, 100, 25), "c", 320, NORMAL_FONT, 8)
 			
 			if FADE_STATE == "NONE" and TOUCHx>=45 and TOUCHx<=275 and TOUCHy>=156 and TOUCHy<=184 then
 				Graphics.fillRect(45,275,156,184,Color.new(80,160,80))
@@ -2451,7 +2543,7 @@ while true do
 				Graphics.fillRect(45,275,156,184,Color.new(45,120,45))
 			end
 			Graphics.fillEmptyRect(45,275,156,184,Color.new(20,60,20))
-			GPU_DrawText(160, 168, "PROSSIMO GIORNO (A)", WHITE, "c", 320, NORMAL_FONT, 8)
+			GPU_DrawText(160, 168, "NEXT DAY (A)", WHITE, "c", 320, NORMAL_FONT, 8)
 			
 			if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_NEXT_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A))) then
 				DAY_NEXT_BTN.touched = false
@@ -2468,8 +2560,8 @@ while true do
 				menu = "DayIntro"
 			end
 		else
-			GPU_DrawText(160, 142, "CAMPAGNA COMPLETATA!", Color.new(180, 140, 20), "c", 320, NORMAL_FONT, 8)
-			GPU_DrawText(160, 160, "GLORIA AD ARSTOTZKA!", Color.new(130, 20, 20), "c", 320, SMALL_FONT, 7)
+			GPU_DrawText(160, 142, "CAMPAIGN COMPLETE!", Color.new(180, 140, 20), "c", 320, NORMAL_FONT, 8)
+			GPU_DrawText(160, 160, "GLORY TO ARSTOTZKA!", Color.new(90, 36, 36), "c", 320, SMALL_FONT, 7)
 		end
 		
 		DAY_MENU_BTN = DAY_MENU_BTN or {touched = false}
@@ -2480,7 +2572,7 @@ while true do
 			Graphics.fillRect(55,265,192,220,Color.new(70,70,70))
 		end
 		Graphics.fillEmptyRect(55,265,192,220,Color.new(30,30,30))
-		GPU_DrawText(160, 204, "MENU PRINCIPALE (B)", WHITE, "c", 320, NORMAL_FONT, 8)
+		GPU_DrawText(160, 204, "MAIN MENU (B)", WHITE, "c", 320, NORMAL_FONT, 8)
 		
 		if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_MENU_BTN.touched) or (Controls.check(pad, KEY_B) and not Controls.check(oldpad, KEY_B))) then
 			DAY_MENU_BTN.touched = false

@@ -265,9 +265,9 @@ DAYS_CONFIG = {
 		headline = "GRESTIN BORDER REOPENS",
 		subline = "Six-year war with Kolechia is over.",
 		bulletin_rules = {
-			"SOLO CITTADINI DI ARSTOTZKA AMMESSI",
-			"RESPINGERE TUTTI GLI STRANIERI",
-			"CONTROLLA SCADENZA E VALIDITA' DOCUMENTI"
+			"ARSTOTZKAN CITIZENS ONLY",
+			"DENY ALL FOREIGNERS",
+			"CHECK EXPIRATION AND VALIDITY"
 		},
 		allow_foreigners = false,
 		require_permit   = false,
@@ -279,9 +279,9 @@ DAYS_CONFIG = {
 		headline = "FOREIGNERS NOW ALLOWED",
 		subline = "Ministry permits entry for non-citizens.",
 		bulletin_rules = {
-			"STRANIERI AMMESSI CON PASSAPORTO VALIDO",
-			"CONTROLLA DATA DI SCADENZA E CITTA'",
-			"RESPINGI PASSAPORTI CONTRAFFATTI O SCADUTI"
+			"FOREIGNERS REQUIRE VALID PASSPORT",
+			"CHECK EXPIRATION DATE AND ISSUING CITY",
+			"DENY FORGED OR EXPIRED PASSPORTS"
 		},
 		allow_foreigners = true,
 		require_permit   = false,
@@ -293,9 +293,9 @@ DAYS_CONFIG = {
 		headline = "SECURITY MEASURES TIGHTENED",
 		subline = "New entry permit required for foreigners.",
 		bulletin_rules = {
-			"STRANIERI DEVONO PRESENTARE ENTRY PERMIT",
-			"CONFRONTA NOME E NUMERO ID TRA DOCUMENTI",
-			"VERIFICA SIGILLO MINISTERO AMMISSIONE (MOA)"
+			"FOREIGNERS REQUIRE ENTRY PERMIT",
+			"VERIFY MATCHING NAME AND ID NUMBER",
+			"CHECK MINISTRY OF ADMISSION (MOA) SEAL"
 		},
 		allow_foreigners = true,
 		require_permit   = true,
@@ -307,9 +307,9 @@ DAYS_CONFIG = {
 		headline = "LABOR RESTRICTIONS IN EFFECT",
 		subline = "Workers require valid Arstotzkan work pass.",
 		bulletin_rules = {
-			"SCOPO LAVORO RICHIEDE WORK PASS VALIDO",
-			"VERIFICA SCADENZA E SIGILLO LAVORO (MOL)",
-			"TUTTI I DOCUMENTI DEVONO COINCIDERE"
+			"WORKERS REQUIRE VALID WORK PASS",
+			"CHECK EXPIRATION AND LABOR SEAL (MOL)",
+			"ALL DOCUMENTS MUST MATCH"
 		},
 		allow_foreigners = true,
 		require_permit   = true,

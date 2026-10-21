@@ -1,9 +1,27 @@
 # ==========================================
 # Papers, Please 3DS - .gitignore
-# File non necessari al funzionamento del gioco
+# File e cartelle non necessari alla build/funzionamento della ROM
 # ==========================================
 
-# File binari e pacchetti ROM compilati (CXI, CIA, 3DS, ELF, ecc.)
+# File di documentazione e note di sviluppo (inclusi file Markdown)
+*.md
+*.markdown
+*.mdown
+*.txt
+*.pdf
+*.docx
+docs/
+doc/
+
+# File sorgente grafici e progetti di editing (non usati a runtime)
+*.psd
+*.ase
+*.aseprite
+*.xcf
+*.ai
+*.svg
+
+# Pacchetti ROM compilati, eseguibili e file binari 3DS
 *.cxi
 *.cia
 *.3ds
@@ -12,7 +30,14 @@
 *.smdh
 *.bin
 
-# Script Python di utility ed elaborazione asset
+# Archivi e file compressi
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+
+# Script di utility, conversione e toolchain di sviluppo
 *.py
 __pycache__/
 *.py[cod]
@@ -20,20 +45,53 @@ __pycache__/
 .venv/
 venv/
 env/
+*.sh
+*.bat
+*.cmd
+*.ps1
+*.js
+*.mjs
+*.ts
 
-# File scratch e bozze temporanee di sviluppo
+# File web temporanei, scrapers e dati di configurazione / test
+*.html
+*.htm
+*.json
+
+# File scratch, bozze e file temporanei di sviluppo
 scratch_*
 scratch/
 *.tmp
+*.temp
 *.bak
+*.swp
+*.swo
+*~
+*.orig
 
-# Screenshot catturati da console/emulatore (LPP-3DS salva BMP con tasto L)
+# Screenshot, log e crash dump (LPP-3DS salva screenshot BMP con tasto L)
 *.bmp
 screenshots/
+*.log
+*.dmp
+*.crash
+*.dump
 
-# Configurazione agenti e toolchain locale
+# Configurazione agenti AI, assistenti e toolchain locale
 .agents/
+.gemini/
+.claude/
+.cursor/
+.chat/
+.history/
 skills-lock.json
+
+# Configurazioni IDE ed editor
+.vscode/
+.idea/
+.vs/
+*.sublime-project
+*.sublime-workspace
 
 # File di sistema operativo (Windows, macOS, Linux)
 Thumbs.db
@@ -45,9 +103,3 @@ $RECYCLE.BIN/
 .DS_Store
 .AppleDouble
 ._*
-
-# Configurazioni IDE ed editor
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
