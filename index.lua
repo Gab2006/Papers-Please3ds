@@ -302,6 +302,7 @@ DAY_CORRECT_COUNT = 0
 DAY_MISTAKES_COUNT = 0
 DAY_TIME_LEFT = 180
 DAY_TIME_OFFSET = 0
+DAY_START_SCORE = 0
 DAY_OVER = false
 NEWS_TEX = nil
 NEWS_TEX_DAY = nil
@@ -639,6 +640,8 @@ function START_STORY_MODE()
 		if DAYS_CONFIG and (CURRENT_DAY > #DAYS_CONFIG or CURRENT_DAY < 1) then
 			CURRENT_DAY = 1
 		end
+		DAY_START_SCORE = (save_data and save_data.score) or 0
+		SCORE = DAY_START_SCORE
 		DAY_TIME_OFFSET = 0
 		menu = "DayIntro"
 	end
@@ -2849,6 +2852,7 @@ while true do
 			DAY_CORRECT_COUNT = 0
 			DAY_MISTAKES_COUNT = 0
 			DAY_TIME_OFFSET = 0
+			DAY_START_SCORE = DAY_START_SCORE or SCORE
 			FADE_STATE = "NONE"
 			FADE_ALPHA = 0
 			PEOPLESCORE = 0
@@ -2894,129 +2898,278 @@ while true do
 		screenshotmake()
 		Graphics.termBlend()
 		elseif menu=="DaySummary" then
-		-- [LAZY-LOAD DAY SUMMARY BACKGROUND TEXTURES]
-		if DAYSUMMARY_BKG_TEX == nil then
-			DAYSUMMARY_BKG_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_DAYSUMMARY.png")
-		end
-		if DAYSUMMARY_TOP_TEX == nil then
-			DAYSUMMARY_TOP_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_DAYSUMMARY_TOP.png")
-		end
-
-		-- [TOP SCREEN: DUSK / SHIFT SUMMARY HEADER]
-		Graphics.initBlend(TOP_SCREEN)
-		if DAYSUMMARY_TOP_TEX then
-			Graphics.drawImage(0, 0, DAYSUMMARY_TOP_TEX)
-		else
-			Graphics.fillRect(0, 400, 0, 240, Color.new(15, 12, 18))
-			GPU_DrawText(200, 24, "MINISTRY OF ADMISSION", Color.new(225, 215, 200), "c", 400, NORMAL_FONT, 8)
-			GPU_DrawText(200, 42, "GRESTIN BORDER CHECKPOINT", Color.new(180, 170, 160), "c", 400, SMALL_FONT, 7)
-		end
-		GPU_DrawText(200, 70, "CHECKPOINT CLOSED - 18:00", Color.new(180, 50, 50), "c", 400, NORMAL_FONT, 8)
-		GPU_DrawText(200, 98, "END OF SHIFT - DAY "..CURRENT_DAY, WHITE, "c", 400, NORMAL_FONT, 8)
-		if FADE_ALPHA > 0 then
-			Graphics.fillRect(0, 400, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
-		end
-		screenshotmake()
-		Graphics.termBlend()
-		
-		-- [BOTTOM SCREEN: SUMMARY REPORT SHEET]
-		Graphics.initBlend(BOTTOM_SCREEN)
-		if DAYSUMMARY_BKG_TEX then
-			Graphics.drawImage(0, 0, DAYSUMMARY_BKG_TEX)
-		else
-			Graphics.fillRect(0, 320, 0, 240, Color.new(25, 20, 20))
-			Graphics.fillRect(15, 305, 12, 228, Color.new(230, 222, 205))
-			Graphics.fillEmptyRect(15, 305, 12, 228, Color.new(100, 80, 60))
-		end
-		
-		GPU_DrawText(160, 64, "DAILY INSPECTION REPORT", Color.new(82, 34, 34), "c", 320, NORMAL_FONT, 8)
-		Graphics.fillRect(35, 285, 73, 75, Color.new(82, 34, 34))
-		
-		GPU_DrawText(35, 84, "ENTRANTS PROCESSED:", Color.new(40, 40, 40), "l", 320, SMALL_FONT, 7)
-		GPU_DrawText(280, 84, tostring(DAY_INSPECTED_COUNT), Color.new(20, 20, 20), "r", 320, NORMAL_FONT, 8)
-		
-		GPU_DrawText(35, 104, "CORRECT DECISIONS:", Color.new(25, 95, 25), "l", 320, SMALL_FONT, 7)
-		GPU_DrawText(280, 104, tostring(DAY_CORRECT_COUNT), Color.new(20, 95, 20), "r", 320, NORMAL_FONT, 8)
-		
-		GPU_DrawText(35, 124, "CITATIONS / VIOLATIONS:", Color.new(180, 50, 50), "l", 320, SMALL_FONT, 7)
-		GPU_DrawText(280, 124, tostring(DAY_MISTAKES_COUNT), Color.new(180, 50, 50), "r", 320, NORMAL_FONT, 8)
-		
-		DAY_NEXT_BTN = DAY_NEXT_BTN or {touched = false}
-		if CURRENT_DAY < #DAYS_CONFIG then
-			GPU_DrawText(160, 144, "DAY "..CURRENT_DAY.." COMPLETE!", Color.new(25, 100, 25), "c", 320, NORMAL_FONT, 8)
+		if SCORE < 0 then
+			-- ==============================================================
+			-- [DEBT GAME OVER: SOMBER / DARK ARREST SCREEN (PAPERS, PLEASE)]
+			-- ==============================================================
+			-- [TOP SCREEN: BLEAK ARREST NOTICE & SUMMARY]
+			Graphics.initBlend(TOP_SCREEN)
+			Graphics.fillRect(0, 400, 0, 240, Color.new(12, 10, 14))
+			Graphics.fillRect(0, 400, 0, 3, Color.new(160, 30, 30))
+			Graphics.fillRect(0, 400, 237, 240, Color.new(160, 30, 30))
 			
-			if FADE_STATE == "NONE" and TOUCHx>=45 and TOUCHx<=275 and TOUCHy>=156 and TOUCHy<=184 then
-				Graphics.fillRect(45,275,156,184,Color.new(80,160,80))
-				DAY_NEXT_BTN.touched = true
-			else
-				Graphics.fillRect(45,275,156,184,Color.new(45,120,45))
+			GPU_DrawText(200, 16, "MINISTRY OF ADMISSION", Color.new(210, 50, 50), "c", 400, NORMAL_FONT, 8)
+			GPU_DrawText(200, 32, "NOTICE OF INDEBTEDNESS & TERMINATION", Color.new(180, 170, 160), "c", 400, SMALL_FONT, 7)
+			GPU_DrawText(200, 46, "GRESTIN BORDER DISTRICT - END OF SHIFT", Color.new(130, 120, 110), "c", 400, SMALL_FONT, 7)
+			
+			-- Dark central dossier container
+			Graphics.fillRect(30, 370, 58, 176, Color.new(20, 16, 20))
+			Graphics.fillEmptyRect(30, 370, 58, 176, Color.new(90, 30, 30))
+			Graphics.fillEmptyRect(32, 368, 60, 174, Color.new(45, 18, 20))
+			
+			GPU_DrawText(45, 68, "EMPLOYEE: INSPECTOR 221-A", Color.new(170, 160, 150), "l", 400, SMALL_FONT, 7)
+			GPU_DrawText(45, 84, "STATUS: DISMISSED & DETAINED", Color.new(220, 50, 50), "l", 400, SMALL_FONT, 7)
+			GPU_DrawText(45, 102, "ENTRANTS PROCESSED:", Color.new(150, 140, 130), "l", 400, SMALL_FONT, 7)
+			GPU_DrawText(355, 102, tostring(DAY_INSPECTED_COUNT), Color.new(200, 190, 180), "r", 400, NORMAL_FONT, 8)
+			GPU_DrawText(45, 120, "CITATIONS ACCUMULATED:", Color.new(180, 60, 60), "l", 400, SMALL_FONT, 7)
+			GPU_DrawText(355, 120, tostring(DAY_MISTAKES_COUNT), Color.new(220, 50, 50), "r", 400, NORMAL_FONT, 8)
+			
+			Graphics.fillRect(45, 355, 136, 137, Color.new(80, 30, 30))
+			
+			GPU_DrawText(45, 146, "FINAL ACCOUNT BALANCE:", Color.new(220, 180, 180), "l", 400, NORMAL_FONT, 8)
+			GPU_DrawText(355, 146, tostring(SCORE) .. " CREDITS", Color.new(240, 40, 40), "r", 400, NORMAL_FONT, 8)
+			
+			GPU_DrawText(200, 192, "AN INDEBTED OFFICER IS A NATIONAL SECURITY RISK.", Color.new(140, 40, 40), "c", 400, SMALL_FONT, 7)
+			GPU_DrawText(200, 212, "GLORY TO ARSTOTZKA.", Color.new(190, 40, 40), "c", 400, NORMAL_FONT, 8)
+			
+			if FADE_ALPHA > 0 then
+				Graphics.fillRect(0, 400, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
 			end
-			Graphics.fillEmptyRect(45,275,156,184,Color.new(20,60,20))
-			GPU_DrawText(160, 168, "NEXT DAY (A)", WHITE, "c", 320, NORMAL_FONT, 8)
+			screenshotmake()
+			Graphics.termBlend()
+
+			-- [BOTTOM SCREEN: DARK ARREST WARRANT DECREE]
+			Graphics.initBlend(BOTTOM_SCREEN)
+			Graphics.fillRect(0, 320, 0, 240, Color.new(16, 13, 17))
 			
-			if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_NEXT_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A))) then
-				DAY_NEXT_BTN.touched = false
+			-- Document sheet background (dark charcoal)
+			Graphics.fillRect(15, 305, 10, 230, Color.new(24, 20, 24))
+			Graphics.fillEmptyRect(15, 305, 10, 230, Color.new(85, 30, 30))
+			Graphics.fillEmptyRect(17, 303, 12, 228, Color.new(45, 18, 20))
+			
+			-- Red header banner
+			Graphics.fillRect(25, 295, 18, 36, Color.new(80, 22, 22))
+			Graphics.fillEmptyRect(25, 295, 18, 36, Color.new(120, 35, 35))
+			GPU_DrawText(160, 23, "OFFICIAL NOTICE OF ARREST", Color.new(240, 210, 210), "c", 320, NORMAL_FONT, 8)
+			
+			-- Typewriter narrative lines
+			GPU_DrawText(28, 44, "Your account has fallen into a negative balance.", Color.new(210, 200, 190), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(28, 58, "You cannot pay the penalties assessed against you.", Color.new(210, 200, 190), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(28, 72, "The Ministry of Admission does not tolerate debt.", Color.new(210, 200, 190), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(28, 88, "You are under arrest for non-payment.", Color.new(230, 60, 60), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(28, 102, "Your family will be questioned and returned to Nirsk.", Color.new(170, 160, 150), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(28, 116, "A replacement inspector has been assigned.", Color.new(170, 160, 150), "l", 320, SMALL_FONT, 7)
+			
+			Graphics.fillRect(28, 292, 130, 131, Color.new(70, 25, 25))
+			GPU_DrawText(160, 138, "CAUSE OF DISMISSAL: INSOLVENCY", Color.new(200, 50, 50), "c", 320, NORMAL_FONT, 8)
+			
+			-- Button 1: RETRY DAY (A)
+			DAY_RETRY_BTN = DAY_RETRY_BTN or {touched = false}
+			if FADE_STATE == "NONE" and TOUCHx>=35 and TOUCHx<=285 and TOUCHy>=154 and TOUCHy<=182 then
+				Graphics.fillRect(35,285,154,182,Color.new(120,35,35))
+				DAY_RETRY_BTN.touched = true
+			else
+				Graphics.fillRect(35,285,154,182,Color.new(75,20,20))
+			end
+			Graphics.fillEmptyRect(35,285,154,182,Color.new(140,40,40))
+			GPU_DrawText(160, 166, "RETRY DAY (A)", Color.new(250, 230, 230), "c", 320, NORMAL_FONT, 8)
+			
+			-- Button 2: MAIN MENU (B)
+			DAY_MENU_BTN = DAY_MENU_BTN or {touched = false}
+			if FADE_STATE == "NONE" and TOUCHx>=35 and TOUCHx<=285 and TOUCHy>=192 and TOUCHy<=220 then
+				Graphics.fillRect(35,285,192,220,Color.new(65,60,65))
+				DAY_MENU_BTN.touched = true
+			else
+				Graphics.fillRect(35,285,192,220,Color.new(40,36,40))
+			end
+			Graphics.fillEmptyRect(35,285,192,220,Color.new(80,75,80))
+			GPU_DrawText(160, 204, "MAIN MENU (B)", Color.new(200, 200, 200), "c", 320, NORMAL_FONT, 8)
+			
+			if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_RETRY_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A))) then
+				DAY_RETRY_BTN.touched = false
 				if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
 				if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
 				CLEAR_CITATIONS()
-				CURRENT_DAY = CURRENT_DAY + 1
+				DAY_INSPECTED_COUNT = 0
+				DAY_CORRECT_COUNT = 0
+				DAY_MISTAKES_COUNT = 0
+				DAY_TIME_OFFSET = 0
+				WRONGMANn = 0
+				PEOPLESCORE = 0
+				SCORE = DAY_START_SCORE or 0
 				SAVE_GAME({
 					day = CURRENT_DAY,
-					in_progress = 0
+					in_progress = 0,
+					score = SCORE
 				})
-				DAY_TIME_OFFSET = 0
 				FADE_STATE = "NONE"
 				FADE_ALPHA = 0
 				menu = "DayIntro"
 			end
-		else
-			GPU_DrawText(160, 142, "CAMPAIGN COMPLETE!", Color.new(180, 140, 20), "c", 320, NORMAL_FONT, 8)
-			GPU_DrawText(160, 160, "GLORY TO ARSTOTZKA!", Color.new(90, 36, 36), "c", 320, SMALL_FONT, 7)
-		end
-		
-		DAY_MENU_BTN = DAY_MENU_BTN or {touched = false}
-		if FADE_STATE == "NONE" and TOUCHx>=55 and TOUCHx<=265 and TOUCHy>=192 and TOUCHy<=220 then
-			Graphics.fillRect(55,265,192,220,Color.new(100,100,100))
-			DAY_MENU_BTN.touched = true
-		else
-			Graphics.fillRect(55,265,192,220,Color.new(70,70,70))
-		end
-		Graphics.fillEmptyRect(55,265,192,220,Color.new(30,30,30))
-		GPU_DrawText(160, 204, "MAIN MENU (B)", WHITE, "c", 320, NORMAL_FONT, 8)
-		
-		if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_MENU_BTN.touched) or (Controls.check(pad, KEY_B) and not Controls.check(oldpad, KEY_B))) then
-			DAY_MENU_BTN.touched = false
-			if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
-			if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
-			local next_day = CURRENT_DAY + 1
-			if CURRENT_DAY >= #DAYS_CONFIG then
-				next_day = 1
-			end
-			SAVE_GAME({
-				day = next_day,
-				in_progress = 0
-			})
-			CURRENT_DAY = next_day
-			DAY_TIME_OFFSET = 0
-			CLEAR_CITATIONS()
-			IS_STORY_MODE = false
-			FADE_STATE = "NONE"
-			FADE_ALPHA = 0
-			menu = 0
-		end
-		
-		if FADE_ALPHA > 0 then
-			Graphics.fillRect(0, 320, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
-		end
-		if FADE_STATE == "IN_TO_SUMMARY" then
-			FADE_ALPHA = FADE_ALPHA - 8
-			if FADE_ALPHA <= 0 then
-				FADE_ALPHA = 0
+			
+			if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_MENU_BTN.touched) or (Controls.check(pad, KEY_B) and not Controls.check(oldpad, KEY_B))) then
+				DAY_MENU_BTN.touched = false
+				if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
+				if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
+				CLEAR_CITATIONS()
+				SAVE_GAME({
+					day = CURRENT_DAY,
+					in_progress = 0,
+					score = DAY_START_SCORE or 0
+				})
+				DAY_TIME_OFFSET = 0
+				IS_STORY_MODE = false
 				FADE_STATE = "NONE"
+				FADE_ALPHA = 0
+				menu = 0
 			end
+			
+			if FADE_ALPHA > 0 then
+				Graphics.fillRect(0, 320, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
+			end
+			if FADE_STATE == "IN_TO_SUMMARY" then
+				FADE_ALPHA = FADE_ALPHA - 8
+				if FADE_ALPHA <= 0 then
+					FADE_ALPHA = 0
+					FADE_STATE = "NONE"
+				end
+			end
+			screenshotmake()
+			Graphics.termBlend()
+		else
+			-- ==============================================================
+			-- [NORMAL DAY SUMMARY: SUCCESSFUL DAY (SCORE >= 0)]
+			-- ==============================================================
+			if DAYSUMMARY_BKG_TEX == nil then
+				DAYSUMMARY_BKG_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_DAYSUMMARY.png")
+			end
+			if DAYSUMMARY_TOP_TEX == nil then
+				DAYSUMMARY_TOP_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_DAYSUMMARY_TOP.png")
+			end
+
+			-- [TOP SCREEN: DUSK / SHIFT SUMMARY HEADER]
+			Graphics.initBlend(TOP_SCREEN)
+			if DAYSUMMARY_TOP_TEX then
+				Graphics.drawImage(0, 0, DAYSUMMARY_TOP_TEX)
+			else
+				Graphics.fillRect(0, 400, 0, 240, Color.new(15, 12, 18))
+				GPU_DrawText(200, 24, "MINISTRY OF ADMISSION", Color.new(225, 215, 200), "c", 400, NORMAL_FONT, 8)
+				GPU_DrawText(200, 42, "GRESTIN BORDER CHECKPOINT", Color.new(180, 170, 160), "c", 400, SMALL_FONT, 7)
+			end
+			GPU_DrawText(200, 70, "CHECKPOINT CLOSED - 18:00", Color.new(180, 50, 50), "c", 400, NORMAL_FONT, 8)
+			GPU_DrawText(200, 98, "END OF SHIFT - DAY "..CURRENT_DAY, WHITE, "c", 400, NORMAL_FONT, 8)
+			if FADE_ALPHA > 0 then
+				Graphics.fillRect(0, 400, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
+			end
+			screenshotmake()
+			Graphics.termBlend()
+			
+			-- [BOTTOM SCREEN: SUMMARY REPORT SHEET]
+			Graphics.initBlend(BOTTOM_SCREEN)
+			if DAYSUMMARY_BKG_TEX then
+				Graphics.drawImage(0, 0, DAYSUMMARY_BKG_TEX)
+			else
+				Graphics.fillRect(0, 320, 0, 240, Color.new(25, 20, 20))
+				Graphics.fillRect(15, 305, 12, 228, Color.new(230, 222, 205))
+				Graphics.fillEmptyRect(15, 305, 12, 228, Color.new(100, 80, 60))
+			end
+			
+			GPU_DrawText(160, 54, "DAILY INSPECTION REPORT", Color.new(82, 34, 34), "c", 320, NORMAL_FONT, 8)
+			Graphics.fillRect(35, 285, 63, 65, Color.new(82, 34, 34))
+			
+			GPU_DrawText(35, 72, "ENTRANTS PROCESSED:", Color.new(40, 40, 40), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(280, 72, tostring(DAY_INSPECTED_COUNT), Color.new(20, 20, 20), "r", 320, NORMAL_FONT, 8)
+			
+			GPU_DrawText(35, 90, "CORRECT DECISIONS:", Color.new(25, 95, 25), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(280, 90, tostring(DAY_CORRECT_COUNT), Color.new(20, 95, 20), "r", 320, NORMAL_FONT, 8)
+			
+			GPU_DrawText(35, 108, "CITATIONS / VIOLATIONS:", Color.new(180, 50, 50), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(280, 108, tostring(DAY_MISTAKES_COUNT), Color.new(180, 50, 50), "r", 320, NORMAL_FONT, 8)
+			
+			GPU_DrawText(35, 126, "CURRENT BALANCE:", Color.new(40, 40, 40), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(280, 126, tostring(SCORE) .. " CREDITS", Color.new(20, 95, 20), "r", 320, NORMAL_FONT, 8)
+			
+			DAY_NEXT_BTN = DAY_NEXT_BTN or {touched = false}
+			if CURRENT_DAY < #DAYS_CONFIG then
+				GPU_DrawText(160, 144, "DAY "..CURRENT_DAY.." COMPLETE!", Color.new(25, 100, 25), "c", 320, NORMAL_FONT, 8)
+				
+				if FADE_STATE == "NONE" and TOUCHx>=45 and TOUCHx<=275 and TOUCHy>=156 and TOUCHy<=184 then
+					Graphics.fillRect(45,275,156,184,Color.new(80,160,80))
+					DAY_NEXT_BTN.touched = true
+				else
+					Graphics.fillRect(45,275,156,184,Color.new(45,120,45))
+				end
+				Graphics.fillEmptyRect(45,275,156,184,Color.new(20,60,20))
+				GPU_DrawText(160, 168, "NEXT DAY (A)", WHITE, "c", 320, NORMAL_FONT, 8)
+				
+				if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_NEXT_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A))) then
+					DAY_NEXT_BTN.touched = false
+					if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
+					if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
+					CLEAR_CITATIONS()
+					CURRENT_DAY = CURRENT_DAY + 1
+					DAY_START_SCORE = SCORE
+					SAVE_GAME({
+						day = CURRENT_DAY,
+						in_progress = 0,
+						score = SCORE
+					})
+					DAY_TIME_OFFSET = 0
+					FADE_STATE = "NONE"
+					FADE_ALPHA = 0
+					menu = "DayIntro"
+				end
+			else
+				GPU_DrawText(160, 142, "CAMPAIGN COMPLETE!", Color.new(180, 140, 20), "c", 320, NORMAL_FONT, 8)
+				GPU_DrawText(160, 160, "GLORY TO ARSTOTZKA!", Color.new(90, 36, 36), "c", 320, SMALL_FONT, 7)
+			end
+			
+			DAY_MENU_BTN = DAY_MENU_BTN or {touched = false}
+			if FADE_STATE == "NONE" and TOUCHx>=55 and TOUCHx<=265 and TOUCHy>=192 and TOUCHy<=220 then
+				Graphics.fillRect(55,265,192,220,Color.new(100,100,100))
+				DAY_MENU_BTN.touched = true
+			else
+				Graphics.fillRect(55,265,192,220,Color.new(70,70,70))
+			end
+			Graphics.fillEmptyRect(55,265,192,220,Color.new(30,30,30))
+			GPU_DrawText(160, 204, "MAIN MENU (B)", WHITE, "c", 320, NORMAL_FONT, 8)
+			
+			if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_MENU_BTN.touched) or (Controls.check(pad, KEY_B) and not Controls.check(oldpad, KEY_B))) then
+				DAY_MENU_BTN.touched = false
+				if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
+				if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
+				local next_day = CURRENT_DAY + 1
+				if CURRENT_DAY >= #DAYS_CONFIG then
+					next_day = 1
+				end
+				DAY_START_SCORE = SCORE
+				SAVE_GAME({
+					day = next_day,
+					in_progress = 0,
+					score = SCORE
+				})
+				CURRENT_DAY = next_day
+				DAY_TIME_OFFSET = 0
+				CLEAR_CITATIONS()
+				IS_STORY_MODE = false
+				FADE_STATE = "NONE"
+				FADE_ALPHA = 0
+				menu = 0
+			end
+			
+			if FADE_ALPHA > 0 then
+				Graphics.fillRect(0, 320, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
+			end
+			if FADE_STATE == "IN_TO_SUMMARY" then
+				FADE_ALPHA = FADE_ALPHA - 8
+				if FADE_ALPHA <= 0 then
+					FADE_ALPHA = 0
+					FADE_STATE = "NONE"
+				end
+			end
+			screenshotmake()
+			Graphics.termBlend()
 		end
-		screenshotmake()
-		Graphics.termBlend()
 	end
 	if Controls.check(pad,KEY_L) and activatescreenshot==0 and not Controls.check(oldpad,KEY_L)  then
 		Th,Tm,Ts = System.getTime()
