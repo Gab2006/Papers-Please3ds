@@ -23,6 +23,7 @@ BROWN2=Color.new(66,42,28)
 BROWN3=Color.new(106,82,47)
 TRANSCRIPTBROWN = Color.new(87,72,72)
 TRANSCRIPTBLUE = Color.new(210,237,236)
+CITATION_COLOR = Color.new(90,85,89)
 Th,Tm,Ts = System.getTime() -- Get System Time
 today={} 
 today.day_value,today.day,today.month,today.year = System.getDate() -- Get System Date
@@ -88,6 +89,8 @@ function loadtex()
 	clockMINUTE = Graphics.loadImage(System.currentDirectory().."ASSETS/clockMINUTE.png")
 	CHSheet = Graphics.loadImage(System.currentDirectory().."ASSETS/CHSheet.png")
 	FACE = {x=-24,y=104,Graphics.loadImage(System.currentDirectory().."ASSETS/FACE_1.png"), Graphics.loadImage(System.currentDirectory().."ASSETS/FACE_2.png"), Graphics.loadImage(System.currentDirectory().."ASSETS/FACE_3.png"), Graphics.loadImage(System.currentDirectory().."ASSETS/FACE_4.png"), Graphics.loadImage(System.currentDirectory().."ASSETS/FACE_5.png")}
+	CITATIONinner = Graphics.loadImage(System.currentDirectory().."ASSETS/CITATIONinner.png")
+	CITATIONouter = Graphics.loadImage(System.currentDirectory().."ASSETS/CITATIONouter.png")
 end
 function GarbageCollection()
 	if BKG_BTMS~= nil then
@@ -133,6 +136,14 @@ function GarbageCollection()
 		Graphics.freeImage(GIVE)
 		Graphics.freeImage(SB)
 		Graphics.freeImage(CHSheet)
+		if CITATIONinner ~= nil then
+			Graphics.freeImage(CITATIONinner)
+			CITATIONinner = nil
+		end
+		if CITATIONouter ~= nil then
+			Graphics.freeImage(CITATIONouter)
+			CITATIONouter = nil
+		end
 	end
 	Graphics.freeImage(NORMAL_FONT)
 	Graphics.freeImage(SMALL_FONT)
@@ -300,6 +311,102 @@ OPENCHECKPOINT_TRIED = nil
 FADE_STATE = "NONE"
 FADE_ALPHA = 0
 CURRENT_SAVE = { day = 1, in_progress = 0 }
+
+-- [M.O.A. CITATION SYSTEM]
+PERFECT_TIMER = Timer.new()
+Timer.pause(PERFECT_TIMER)
+PERFECT_GAMEOVER_ACTIVE = false
+PERFECT_GAMEOVER_READY = false
+CITATIONS = {}
+CITATION_COUNT = 0
+PENDING_REWARDS = {}
+LAST_PLUS_POINTS = 1
+LAST_MINUS_POINTS = 5
+
+function CLEAR_CITATIONS()
+	CITATIONS = {}
+	CITATION_COUNT = 0
+	PENDING_REWARDS = {}
+	LAST_PLUS_POINTS = 1
+	LAST_MINUS_POINTS = 5
+	PERFECT_GAMEOVER_ACTIVE = false
+	PERFECT_GAMEOVER_READY = false
+	if PERFECT_TIMER then
+		Timer.reset(PERFECT_TIMER)
+		Timer.pause(PERFECT_TIMER)
+	end
+	if DESKTOP then
+		local i = 1
+		while i <= #DESKTOP do
+			if string.sub(DESKTOP[i], 1, 9) == "CITATION_" then
+				table.remove(DESKTOP, i)
+			else
+				i = i + 1
+			end
+		end
+	end
+	if ALLITEMS then
+		local i = 1
+		while i <= #ALLITEMS do
+			if ALLITEMS[i] and ALLITEMS[i].is_cit then
+				table.remove(ALLITEMS, i)
+			else
+				i = i + 1
+			end
+		end
+	end
+end
+
+function IS_CITATION_PRINTING()
+	if PENDING_REWARDS and #PENDING_REWARDS > 0 then
+		return true
+	end
+	if CITATIONS then
+		for _, cit in pairs(CITATIONS) do
+			if cit.status == "DELAY" or cit.status == "PRINTING" then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+function SPAWN_CITATION(reason_text, penalty_text, penalty_mode, penalty_pts, penalty_time)
+	if CITATIONinner == nil or CITATIONouter == nil then
+		loadtex()
+	end
+	CITATION_COUNT = CITATION_COUNT + 1
+	local id_str = "CITATION_" .. CITATION_COUNT
+	
+	local cit = {
+		key              = id_str,
+		is_cit           = true,
+		reason           = reason_text,
+		penalty          = penalty_text,
+		penalty_mode     = penalty_mode,
+		penalty_pts      = penalty_pts or 0,
+		penalty_time     = penalty_time or 0,
+		now              = 0,
+		x                = 12,
+		y                = 240,
+		target_y         = math.max(100, 160 - (CITATION_COUNT - 1) * 6),
+		status           = "DELAY",
+		delay_frames     = 0,
+		delay_max        = 600,
+		step_feed        = 0,
+		step_pause       = 0,
+		is_fatal         = (MODEselect == 2),
+		rot              = (CITATION_COUNT % 2 == 1 and 0.15 or -0.12),
+		tex              = CITATIONinner,
+		tex2             = CITATIONouter,
+		velocity         = 0,
+		gravity          = 0
+	}
+	
+	CITATIONS[id_str] = cit
+	table.insert(DESKTOP, 1, id_str)
+	table.insert(ALLITEMS, 1, cit)
+end
 
 function SAVE_GAME(save_data)
 	local ok, res = pcall(function()
@@ -472,6 +579,7 @@ function SAVE_STORY_PROGRESS()
 end
 
 function START_STORY_MODE()
+	CLEAR_CITATIONS()
 	IS_STORY_MODE = true
 	MODEselect = 4
 	local save_data = LOAD_GAME()
@@ -595,12 +703,16 @@ function ScreenButton(xbut,ybut,texture,key,word)
 	word.TOUCHED=word.TOUCHED or "NO"
 	if TOUCHx==0 and TOUCHy==0 and word.TOUCHED == "YES" and TOUCHer~="BB" then                                                                                                                        
 		if key==2 then
+			if menu=="Selection" then
+				CLEAR_CITATIONS()
+			end
 			if BKG_BTMS==nil then
 				loadtex()
 			end
 			Timer.resume(GameTIME)
 		end
 		if key==0 then
+			CLEAR_CITATIONS()
 			if IS_STORY_MODE and (menu=="Pause" or menu==2) then
 				SAVE_STORY_PROGRESS()
 			end
@@ -802,6 +914,84 @@ function LOAD_FACE(num)
 	FACE.y=104+2*math.floor(2*math.sin(notconst))
 end
 function TOUCH_CHECK(word,key)
+	if word.is_cit then
+		if word.status == "DELAY" then
+			return
+		end
+
+		local w = (word.now == 1) and 68 or 183
+		local h = (word.now == 1) and 27 or 80
+
+		if TOUCHx > 0 and TOUCHy > 0 then
+			local touch_y_min = (word.now == 0) and math.max(word.y, 68) or word.y
+			if TOUCH == "ACTIVE" and TOUCHx >= word.x and TOUCHx <= word.x + w and TOUCHy >= touch_y_min and TOUCHy <= word.y + h then
+				TOUCH = key
+				word.oldtouchx = TOUCHx - word.x
+				word.oldtouchy = TOUCHy - word.y
+				if word.status == "PRINTING" then
+					word.status = "IDLE"
+					if word.is_fatal and not PERFECT_GAMEOVER_READY then
+						PERFECT_GAMEOVER_READY = true
+						if PERFECT_TIMER == nil then PERFECT_TIMER = Timer.new() end
+						Timer.reset(PERFECT_TIMER)
+						Timer.resume(PERFECT_TIMER)
+					end
+				end
+			end
+
+			if TOUCH == key then
+				word.oldtouchx = word.oldtouchx or (TOUCHx - word.x)
+				word.oldtouchy = word.oldtouchy or (TOUCHy - word.y)
+
+				-- Slide above counter: shrink citation to compact slip
+				if TOUCHy <= 67 and word.now == 0 then
+					word.now = 1
+					w = 68
+					h = 27
+					word.oldtouchx = math.floor(w / 2)
+					word.oldtouchy = math.floor(h / 2)
+				-- Slide down onto desk: expand citation to full readable document
+				elseif TOUCHy > 67 and word.now == 1 then
+					word.now = 0
+					w = 183
+					h = 80
+					word.oldtouchx = math.floor(w / 2)
+					word.oldtouchy = math.floor(h / 2)
+				end
+
+				word.x = TOUCHx - word.oldtouchx
+				word.y = TOUCHy - word.oldtouchy
+
+				local half_w = math.floor(w / 2)
+
+				if word.now == 1 then
+					-- Shrunk on the counter: free placement anywhere on the counter shelf, can slide half-way off lateral edges
+					if word.x < -half_w then word.x = -half_w end
+					if word.x > 320 - half_w then word.x = 320 - half_w end
+					if word.y < 5 then word.y = 5 end
+					if word.y > 60 then word.y = 60 end
+				else
+					-- Expanded on the desk: allowed to slide underneath the counter ledge and exit lateral edges by half
+					if word.x < -half_w then word.x = -half_w end
+					if word.x > 320 - half_w then word.x = 320 - half_w end
+					if word.y < -40 then word.y = -40 end
+					if word.y > 220 then word.y = 220 end
+				end
+			end
+		end
+
+		if (TOUCHx == 0 and TOUCHy == 0) and TOUCH == key then
+			word.oldtouchx = nil
+			word.oldtouchy = nil
+		end
+
+		if TOUCH ~= key and (word.oldtouchx ~= nil or word.oldtouchy ~= nil) then
+			word.oldtouchx = nil
+			word.oldtouchy = nil
+		end
+
+		return
+	end
 	if key=="RULEBOOK" then
 		word.x = word.x or 5
 		word.y = word.y or 23
@@ -945,7 +1135,28 @@ function TOUCH_CHECK(word,key)
 	end
 end
 function LOAD_IMAGE(word,key)
-	if key=="PASSPORT" then 
+	if word.is_cit then
+		if word.status == "DELAY" then
+			return
+		end
+		if word.now == 1 then
+			local rot = word.rot or 0.15
+			local w2 = (word.tex2 and Graphics.getImageWidth(word.tex2)) or 68
+			local h2 = (word.tex2 and Graphics.getImageHeight(word.tex2)) or 27
+			local cx = math.floor(word.x + w2 / 2)
+			local cy = math.floor(word.y + h2 / 2)
+			if Options["Shadow"] == 1 then
+				Graphics.drawRotateImage(cx + 2, cy + 2, word.tex2, rot, SHADOW)
+			end
+			Graphics.drawRotateImage(cx, cy, word.tex2, rot)
+		elseif word.now == 0 then
+			if TOUCH == key and Options["Shadow"] == 1 then
+				Graphics.drawImage(math.floor(word.x + 3), math.floor(word.y + 3), word.tex, SHADOW)
+			end
+			Graphics.drawImage(math.floor(word.x), math.floor(word.y), word.tex)
+			LOAD_TEXT(key)
+		end
+	elseif key=="PASSPORT" then 
 		if word.now==1 then
 			if Options["Shadow"]==1 then
 				Graphics.drawRotateImage(word.x+16, word.y+23, PASSPORT.tex2,PASSPORT.rot,SHADOW)
@@ -1022,6 +1233,16 @@ function LOAD_IMAGE(word,key)
 	end
 end
 function LOAD_TEXT(key,face)
+	if CITATIONS and CITATIONS[key] then
+		local cit = CITATIONS[key]
+		local cx = math.floor(cit.x)
+		local cy = math.floor(cit.y)
+		GPU_DrawText(cx + 91, cy + 22, "MINISTRY OF ADMISSION", CITATION_COLOR, "c", 320, SMALL_FONT, 7)
+		GPU_DrawText(cx + 91, cy + 33, "OFFICIAL CITATION", CITATION_COLOR, "c", 320, SMALL_FONT, 7)
+		GPU_DrawText(cx + 91, cy + 44, string.upper(cit.reason or ""), CITATION_COLOR, "c", 320, SMALL_FONT, 7)
+		GPU_DrawText(cx + 91, cy + 56, string.upper(cit.penalty or ""), CITATION_COLOR, "c", 320, SMALL_FONT, 7)
+		return
+	end
 	if key=="PASSPORT" then
 		if PERSON.passport==1 then
 			GPU_DrawText(PASSPORT.x+8,PASSPORT.y+138, PERSON.name, BROWN,"l",320,SMALL_FONT,7) -- firstname and lastname
@@ -1683,6 +1904,16 @@ function RANDOMIZE()
 	if IS_STORY_MODE and DAYS_CONFIG[CURRENT_DAY] and not DAYS_CONFIG[CURRENT_DAY].allow_foreigners and PERSON.passport~=2 then
 		WRONGCONST = "Foreigners not allowed"
 	end
+	if CITATION_COUNT > 0 then
+		for i = 1, CITATION_COUNT do
+			local id_str = "CITATION_" .. i
+			local cit = CITATIONS[id_str]
+			if cit then
+				table.insert(DESKTOP, 1, cit.key)
+				table.insert(ALLITEMS, 1, cit)
+			end
+		end
+	end
 	stamp=nil
 end
 function TECHMENU()
@@ -1809,10 +2040,12 @@ end
 function CHECK_EMPTYTABLE()
 	if not HAS_TRAVELER_DOCS() and stamp ~= nil then
 		if stamp == "YES" and WRONGCONST == "Nothing" and CheckPoint==0 then
-			SCORE=SCORE + plusPOINTS
-			PLUSy=80
+			table.insert(PENDING_REWARDS, {
+				delay = 600,
+				points = plusPOINTS,
+				is_story = IS_STORY_MODE
+			})
 			if IS_STORY_MODE then
-				DAY_CORRECT_COUNT = DAY_CORRECT_COUNT + 1
 				DAY_INSPECTED_COUNT = DAY_INSPECTED_COUNT + 1
 			end
 			elseif stamp == "YES" and WRONGCONST ~="Nothing" and CheckPoint==0 then
@@ -1821,19 +2054,65 @@ function CHECK_EMPTYTABLE()
 				DAY_MISTAKES_COUNT = DAY_MISTAKES_COUNT + 1
 				DAY_INSPECTED_COUNT = DAY_INSPECTED_COUNT + 1
 			end
-			if MODEselect==3 then
-				SCORE=SCORE - 5*WRONGMANn 
-				MINUSy=80
+			local reason_text = string.upper(WRONGCONST)
+			local penalty_text = ""
+			local penalty_pts = 0
+			local penalty_time = 0
+			local mistake_count = IS_STORY_MODE and DAY_MISTAKES_COUNT or WRONGMANn
+			if IS_STORY_MODE then
+				if mistake_count <= 2 then
+					penalty_text = "WARNING - NO PENALTY"
+					penalty_pts = 0
+				elseif mistake_count == 3 then
+					penalty_text = "PENALTY: 5 CREDITS"
+					penalty_pts = 5
+				else
+					penalty_text = "PENALTY: 10 CREDITS"
+					penalty_pts = 10
+				end
+			elseif MODEselect == 1 then
+				if mistake_count <= 2 then
+					penalty_text = "WARNING - NO PENALTY"
+					penalty_time = 0
+				else
+					penalty_text = "PENALTY: -30 SECONDS"
+					penalty_time = 30000
+				end
+			elseif MODEselect == 2 then
+				penalty_text = "FATAL INFRACTION - DISMISSED"
+				penalty_pts = 0
+			elseif MODEselect == 3 then
+				if mistake_count <= 2 then
+					penalty_text = "WARNING - NO PENALTY"
+					penalty_pts = 0
+				elseif mistake_count == 3 then
+					penalty_text = "PENALTY: -5 POINTS"
+					penalty_pts = 5
+				else
+					penalty_text = "PENALTY: -10 POINTS"
+					penalty_pts = 10
+				end
+			else
+				penalty_text = "WARNING - NO PENALTY"
+				penalty_pts = 0
 			end
-			if MODEselect==1 then
-				TIMEMINUS = TIMEMINUS + 30000
-				TIMEy=80
+			SPAWN_CITATION(reason_text, penalty_text, MODEselect, penalty_pts, penalty_time)
+			if MODEselect == 2 then
+				PERFECT_GAMEOVER_ACTIVE = true
+				PERFECT_GAMEOVER_READY = false
+				if PERFECT_TIMER == nil then
+					PERFECT_TIMER = Timer.new()
+				end
+				Timer.reset(PERFECT_TIMER)
+				Timer.pause(PERFECT_TIMER)
 			end
 			elseif stamp == "NO" and WRONGCONST ~="Nothing" and CheckPoint==0 then
-			SCORE=SCORE + plusPOINTS
-			PLUSy=80
+			table.insert(PENDING_REWARDS, {
+				delay = 600,
+				points = plusPOINTS,
+				is_story = IS_STORY_MODE
+			})
 			if IS_STORY_MODE then
-				DAY_CORRECT_COUNT = DAY_CORRECT_COUNT + 1
 				DAY_INSPECTED_COUNT = DAY_INSPECTED_COUNT + 1
 			end
 			elseif stamp == "NO" and WRONGCONST =="Nothing" and CheckPoint==0 then
@@ -1842,13 +2121,57 @@ function CHECK_EMPTYTABLE()
 				DAY_MISTAKES_COUNT = DAY_MISTAKES_COUNT + 1
 				DAY_INSPECTED_COUNT = DAY_INSPECTED_COUNT + 1
 			end
-			if MODEselect==3 then
-				SCORE=SCORE - 5*WRONGMANn 
-				MINUSy=80
+			local reason_text = "DENIAL REASON INVALID"
+			local penalty_text = ""
+			local penalty_pts = 0
+			local penalty_time = 0
+			local mistake_count = IS_STORY_MODE and DAY_MISTAKES_COUNT or WRONGMANn
+			if IS_STORY_MODE then
+				if mistake_count <= 2 then
+					penalty_text = "WARNING - NO PENALTY"
+					penalty_pts = 0
+				elseif mistake_count == 3 then
+					penalty_text = "PENALTY: 5 CREDITS"
+					penalty_pts = 5
+				else
+					penalty_text = "PENALTY: 10 CREDITS"
+					penalty_pts = 10
+				end
+			elseif MODEselect == 1 then
+				if mistake_count <= 2 then
+					penalty_text = "WARNING - NO PENALTY"
+					penalty_time = 0
+				else
+					penalty_text = "PENALTY: -30 SECONDS"
+					penalty_time = 30000
+				end
+			elseif MODEselect == 2 then
+				penalty_text = "FATAL INFRACTION - DISMISSED"
+				penalty_pts = 0
+			elseif MODEselect == 3 then
+				if mistake_count <= 2 then
+					penalty_text = "WARNING - NO PENALTY"
+					penalty_pts = 0
+				elseif mistake_count == 3 then
+					penalty_text = "PENALTY: -5 POINTS"
+					penalty_pts = 5
+				else
+					penalty_text = "PENALTY: -10 POINTS"
+					penalty_pts = 10
+				end
+			else
+				penalty_text = "WARNING - NO PENALTY"
+				penalty_pts = 0
 			end
-			if MODEselect==1 then
-				TIMEMINUS = TIMEMINUS + 30000
-				TIMEy=80
+			SPAWN_CITATION(reason_text, penalty_text, MODEselect, penalty_pts, penalty_time)
+			if MODEselect == 2 then
+				PERFECT_GAMEOVER_ACTIVE = true
+				PERFECT_GAMEOVER_READY = false
+				if PERFECT_TIMER == nil then
+					PERFECT_TIMER = Timer.new()
+				end
+				Timer.reset(PERFECT_TIMER)
+				Timer.pause(PERFECT_TIMER)
 			end
 		end
 		if CheckPoint==0 then CheckPoint=2 end
@@ -1896,6 +2219,79 @@ while true do
 	--OptionsOP()
 	if menu==2 then
 		Graphics.initBlend(BOTTOM_SCREEN)
+		-- Process delayed correct inspection rewards (10s suspense delay)
+		local r_idx = 1
+		while r_idx <= #PENDING_REWARDS do
+			local rew = PENDING_REWARDS[r_idx]
+			rew.delay = rew.delay - 1
+			if rew.delay <= 0 then
+				SCORE = SCORE + rew.points
+				LAST_PLUS_POINTS = rew.points
+				PLUSy = 80
+				if rew.is_story then
+					DAY_CORRECT_COUNT = DAY_CORRECT_COUNT + 1
+				end
+				table.remove(PENDING_REWARDS, r_idx)
+			else
+				r_idx = r_idx + 1
+			end
+		end
+
+		for k, cit in pairs(CITATIONS) do
+			if cit.status == "DELAY" then
+				cit.delay_frames = cit.delay_frames + 1
+				if cit.delay_frames >= cit.delay_max then
+					cit.status = "PRINTING"
+					cit.step_feed = 8
+					cit.step_pause = 0
+					-- Apply mistake penalty at the exact moment citation emerges
+					if cit.penalty_pts and cit.penalty_pts > 0 then
+						SCORE = SCORE - cit.penalty_pts
+						LAST_MINUS_POINTS = cit.penalty_pts
+						MINUSy = 80
+					end
+					if cit.penalty_time and cit.penalty_time > 0 then
+						TIMEMINUS = TIMEMINUS + cit.penalty_time
+						TIMEy = 80
+					end
+				end
+			elseif cit.status == "PRINTING" then
+				if cit.step_feed > 0 then
+					local move = math.min(2, cit.step_feed)
+					cit.y = cit.y - move
+					cit.step_feed = cit.step_feed - move
+					if cit.y <= cit.target_y then
+						cit.y = cit.target_y
+						cit.status = "IDLE"
+						if cit.is_fatal and not PERFECT_GAMEOVER_READY then
+							PERFECT_GAMEOVER_READY = true
+							if PERFECT_TIMER == nil then PERFECT_TIMER = Timer.new() end
+							Timer.reset(PERFECT_TIMER)
+							Timer.resume(PERFECT_TIMER)
+						end
+					end
+					if cit.step_feed <= 0 and cit.status == "PRINTING" then
+						cit.step_pause = 16
+					end
+				elseif cit.step_pause > 0 then
+					cit.step_pause = cit.step_pause - 1
+					if cit.step_pause <= 0 then
+						if cit.y > cit.target_y then
+							cit.step_feed = math.min(8, cit.y - cit.target_y)
+						else
+							cit.y = cit.target_y
+							cit.status = "IDLE"
+							if cit.is_fatal and not PERFECT_GAMEOVER_READY then
+								PERFECT_GAMEOVER_READY = true
+								if PERFECT_TIMER == nil then PERFECT_TIMER = Timer.new() end
+								Timer.reset(PERFECT_TIMER)
+								Timer.resume(PERFECT_TIMER)
+							end
+						end
+					end
+				end
+			end
+		end
 		for i=1, #DESKTOP do
 			if TOUCH == DESKTOP[i] then 
 				table.remove(DESKTOP,i) 
@@ -1971,7 +2367,7 @@ while true do
 		BKG_SHDW()
 		LOAD_FACE(PERSON.realface)
 		if CheckPoint == 1 and Controls.check(pad,KEY_A) and not Controls.check(oldpad,KEY_A) then
-			if not (IS_STORY_MODE and DAY_OVER) then
+			if not (IS_STORY_MODE and DAY_OVER) and not PERFECT_GAMEOVER_ACTIVE then
 				PEOPLESCORE = PEOPLESCORE + 1
 				RANDOMIZE()
 				CheckPoint=0
@@ -2048,20 +2444,22 @@ while true do
 			MINUSy=MINUSy+0.3
 			Graphics.fillRect(40,67,MINUSy-2,MINUSy+8,Color.new(63,0,255))
 			Graphics.fillEmptyRect(40,67,MINUSy-2,MINUSy+8,RED)
+			local m_text = "-" .. (LAST_MINUS_POINTS or 5)
 			if Options["TextAlign"]==1 then
-				GPU_DrawText(53,MINUSy,"-"..WRONGMANn*5 ,RED,"c",400,SMALL_FONT,7)
+				GPU_DrawText(53,MINUSy,m_text ,RED,"c",400,SMALL_FONT,7)
 				elseif Options["TextAlign"]==0 then
-				GPU_DrawText(44,MINUSy,"-"..WRONGMANn*5 ,RED,"l",400,SMALL_FONT,7)
+				GPU_DrawText(44,MINUSy,m_text ,RED,"l",400,SMALL_FONT,7)
 			end
 		end
 		if PLUSy<110 then
 			PLUSy=PLUSy+0.3
 			Graphics.fillRect(40,67,PLUSy-2,PLUSy+8,Color.new(63,0,255))
 			Graphics.fillEmptyRect(40,67,PLUSy-2,PLUSy+8,GREEN)
+			local p_text = "+" .. (LAST_PLUS_POINTS or plusPOINTS)
 			if Options["TextAlign"]==1 then
-				GPU_DrawText(53,PLUSy,"+"..plusPOINTS ,GREEN,"c",400,SMALL_FONT,7)
+				GPU_DrawText(53,PLUSy,p_text ,GREEN,"c",400,SMALL_FONT,7)
 				elseif Options["TextAlign"]==0 then
-				GPU_DrawText(44,PLUSy,"+"..plusPOINTS ,GREEN,"l",400,SMALL_FONT,7)
+				GPU_DrawText(44,PLUSy,p_text ,GREEN,"l",400,SMALL_FONT,7)
 			end
 		end
 		
@@ -2105,7 +2503,7 @@ while true do
 		screenshotmake()
 		Graphics.termBlend()
 		if IS_STORY_MODE then
-			if DAY_OVER and CheckPoint == 1 and FADE_STATE == "NONE" then
+			if DAY_OVER and CheckPoint == 1 and FADE_STATE == "NONE" and not IS_CITATION_PRINTING() then
 				Timer.pause(GameTIME)
 				SWITCHER = 1
 				FADE_STATE = "OUT_TO_SUMMARY"
@@ -2128,8 +2526,17 @@ while true do
 			end
 			elseif MODEselect==2 then
 			if WRONGMANn>0 then
-				menu="GameOver"
-				Timer.pause(GameTIME)
+				if PERFECT_GAMEOVER_ACTIVE then
+					if PERFECT_GAMEOVER_READY and PERFECT_TIMER and Timer.getTime(PERFECT_TIMER) >= 2500 then
+						menu="GameOver"
+						Timer.pause(GameTIME)
+						PERFECT_GAMEOVER_ACTIVE = false
+						PERFECT_GAMEOVER_READY = false
+					end
+				else
+					menu="GameOver"
+					Timer.pause(GameTIME)
+				end
 			end
 			elseif MODEselect==3 then
 			if SCORE<0 then
@@ -2334,7 +2741,7 @@ while true do
 		GPU_DrawText(160, 28, "OFFICIAL DIRECTIVE - DAY "..CURRENT_DAY.." - "..day_cfg.date, Color.new(230, 210, 210), "c", 320, SMALL_FONT, 7)
 		
 		-- Subheader
-		GPU_DrawText(20, 46, "ARSTOTZKA BORDER CONTROL - GRESTIN CHECKPOINT", Color.new(70, 60, 50), "l", 320, SMALL_FONT, 7)
+		GPU_DrawText(20, 48, "ARSTOTZKA BORDER CONTROL - GRESTIN CHECKPOINT", Color.new(70, 60, 50), "l", 320, SMALL_FONT, 7)
 		if BULLETIN_BTM_TEX == nil then
 			Graphics.fillRect(20, 300, 58, 60, Color.new(120, 100, 80))
 		end
@@ -2437,6 +2844,7 @@ while true do
 			Timer.reset(Clock)
 			clockInt = 0
 			DAY_OVER = false
+			CLEAR_CITATIONS()
 			DAY_INSPECTED_COUNT = 0
 			DAY_CORRECT_COUNT = 0
 			DAY_MISTAKES_COUNT = 0
@@ -2479,6 +2887,7 @@ while true do
 				OPENCHECKPOINT_TEX = nil
 			end
 			OPENCHECKPOINT_TRIED = nil
+			CLEAR_CITATIONS()
 			IS_STORY_MODE = false
 			menu = 0
 		end
@@ -2499,9 +2908,9 @@ while true do
 			Graphics.drawImage(0, 0, DAYSUMMARY_TOP_TEX)
 		else
 			Graphics.fillRect(0, 400, 0, 240, Color.new(15, 12, 18))
+			GPU_DrawText(200, 24, "MINISTRY OF ADMISSION", Color.new(225, 215, 200), "c", 400, NORMAL_FONT, 8)
+			GPU_DrawText(200, 42, "GRESTIN BORDER CHECKPOINT", Color.new(180, 170, 160), "c", 400, SMALL_FONT, 7)
 		end
-		GPU_DrawText(200, 24, "MINISTRY OF ADMISSION", Color.new(225, 215, 200), "c", 400, NORMAL_FONT, 8)
-		GPU_DrawText(200, 42, "GRESTIN BORDER CHECKPOINT", Color.new(180, 170, 160), "c", 400, SMALL_FONT, 7)
 		GPU_DrawText(200, 70, "CHECKPOINT CLOSED - 18:00", Color.new(180, 50, 50), "c", 400, NORMAL_FONT, 8)
 		GPU_DrawText(200, 98, "END OF SHIFT - DAY "..CURRENT_DAY, WHITE, "c", 400, NORMAL_FONT, 8)
 		if FADE_ALPHA > 0 then
@@ -2549,6 +2958,7 @@ while true do
 				DAY_NEXT_BTN.touched = false
 				if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
 				if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
+				CLEAR_CITATIONS()
 				CURRENT_DAY = CURRENT_DAY + 1
 				SAVE_GAME({
 					day = CURRENT_DAY,
@@ -2588,6 +2998,7 @@ while true do
 			})
 			CURRENT_DAY = next_day
 			DAY_TIME_OFFSET = 0
+			CLEAR_CITATIONS()
 			IS_STORY_MODE = false
 			FADE_STATE = "NONE"
 			FADE_ALPHA = 0
