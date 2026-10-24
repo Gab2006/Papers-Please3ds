@@ -450,7 +450,17 @@ function SAVE_GAME(save_data)
 		            "WRONGMANN="..data.wrongmann.."\n"..
 		            "PEOPLESCORE="..data.peoplescore.."\n"
 
-		local paths = {"/3ds/papersplease_save.dat", "papersplease_save.dat"}
+		if System and System.createDirectory then
+			pcall(function() System.createDirectory("/3ds") end)
+			pcall(function() System.createDirectory("sdmc:/3ds") end)
+		end
+
+		local paths = {
+			"/3ds/papersplease_save.dat",
+			"sdmc:/3ds/papersplease_save.dat",
+			"/papersplease_save.dat",
+			"sdmc:/papersplease_save.dat"
+		}
 		local written = false
 		for _, path in ipairs(paths) do
 			if not written then
@@ -491,30 +501,29 @@ function LOAD_GAME()
 		peoplescore = 0
 	}
 	pcall(function()
-		local paths = {"/3ds/papersplease_save.dat", "papersplease_save.dat"}
+		local paths = {
+			"/3ds/papersplease_save.dat",
+			"sdmc:/3ds/papersplease_save.dat",
+			"/papersplease_save.dat",
+			"sdmc:/papersplease_save.dat"
+		}
 		local content = nil
 		for _, path in ipairs(paths) do
 			if not content then
-				local exists = true
-				if System and System.doesFileExist then
-					exists = System.doesFileExist(path)
+				local f = nil
+				local flag = FREAD or 0
+				local success = pcall(function() f = io.open(path, flag) end)
+				if not success or not f then
+					pcall(function() f = io.open(path, "r") end)
 				end
-				if exists then
-					local f = nil
-					local flag = FREAD or 0
-					local success = pcall(function() f = io.open(path, flag) end)
-					if not success or not f then
-						pcall(function() f = io.open(path, "r") end)
-					end
-					if f then
-						if io.size and io.read then
-							local sz = io.size(f) or 1024
-							content = io.read(f, 0, sz)
-							io.close(f)
-						elseif f.read then
-							content = f:read("*a")
-							f:close()
-						end
+				if f then
+					if io.size and io.read then
+						local sz = io.size(f) or 1024
+						content = io.read(f, 0, sz)
+						io.close(f)
+					elseif f.read then
+						content = f:read("*a")
+						f:close()
 					end
 				end
 			end

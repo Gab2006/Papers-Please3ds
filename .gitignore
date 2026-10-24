@@ -52,6 +52,7 @@ env/
 *.js
 *.mjs
 *.ts
+tools/
 
 # File web temporanei, scrapers e dati di configurazione / test
 *.html
