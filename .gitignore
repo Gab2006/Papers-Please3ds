@@ -5,6 +5,7 @@
 
 # File di documentazione e note di sviluppo (inclusi file Markdown)
 *.md
+!README.md
 *.markdown
 *.mdown
 *.txt

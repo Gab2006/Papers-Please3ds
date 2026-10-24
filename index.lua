@@ -579,8 +579,7 @@ function SPAWN_CITATION(reason_text, penalty_text, penalty_mode, penalty_pts, pe
 		tex              = CITATIONinner,
 		tex2             = CITATIONouter,
 		velocity         = 0,
-		gravity          = 0,
-		vel_x            = 0
+		gravity          = 0
 	}
 	
 	CITATIONS[id_str] = cit
@@ -1145,7 +1144,6 @@ function TOUCH_CHECK(word,key)
 				word.oldtouchy = TOUCHy - word.y
 				word.velocity = 0
 				word.gravity = 0
-				word.vel_x = 0
 				if word.status == "PRINTING" then
 					word.status = "IDLE"
 					PLAY_SFX("printer_tear")
@@ -1215,9 +1213,8 @@ function TOUCH_CHECK(word,key)
 		if TOUCH ~= key and word.now == 1 then
 			word.velocity = word.velocity or 0
 			word.gravity = word.gravity or 0
-			word.vel_x = word.vel_x or 0
 
-			-- Se sporge dal bordo inferiore o superiore del bancone: slide verso quota ripiano y = 23 (come passaporto e carta d'identita')
+			-- Se sporge dal bordo inferiore del bancone: slide verso quota ripiano y = 23 (come passaporto e carta d'identita')
 			if word.y <= 23 then
 				word.gravity = 0
 				word.velocity = 0
@@ -1233,32 +1230,6 @@ function TOUCH_CHECK(word,key)
 					word.velocity = 0
 					word.gravity = 0
 				end
-			elseif word.y < 23 then
-				word.y = word.y + 3
-				if word.y >= 23 then
-					word.y = 23
-					word.velocity = 0
-					word.gravity = 0
-				end
-			end
-
-			-- Se sporge dai bordi laterali del bancone (apertura bancone tra x = 35 e x = 285 - 68 = 217): slide orizzontale
-			if word.x < 35 then
-				word.vel_x = word.vel_x + 0.15
-				word.x = word.x + word.vel_x
-				if word.x >= 35 then
-					word.x = 35
-					word.vel_x = 0
-				end
-			elseif word.x > 217 then
-				word.vel_x = word.vel_x + 0.15
-				word.x = word.x - word.vel_x
-				if word.x <= 217 then
-					word.x = 217
-					word.vel_x = 0
-				end
-			else
-				word.vel_x = 0
 			end
 		end
 
