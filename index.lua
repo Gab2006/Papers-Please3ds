@@ -31,6 +31,183 @@ math.randomseed(Th*3600+Tm*60+Ts)
 if System.currentDirectory() == "/" then
 	System.currentDirectory("romfs:/")
 end
+
+-- [AUDIO SUBSYSTEM INITIALIZATION]
+AUDIO_READY = false
+if Sound and Sound.init then
+	local ok = pcall(Sound.init)
+	if ok then
+		AUDIO_READY = true
+	end
+elseif Sound ~= nil then
+	AUDIO_READY = true
+end
+
+AUDIO = {
+	muted = false,
+	sfx = {},
+	sfx_played = {},
+	bgm_cache = {},
+	current_bgm = nil,
+	current_bgm_name = nil,
+	current_ambient = nil,
+	current_ambient_name = nil
+}
+
+local SFX_MAP = {
+	stamp_down = "stamp-down.wav",
+	stamp_up = "stamp-up.wav",
+	stampbar_open = "stampbar-open.wav",
+	stampbar_close = "stampbar-close.wav",
+	shutter_rise = "shutter-rise.wav",
+	shutter_drop = "shutter-drop.wav",
+	speech_announce = "speech-announce.wav",
+	speech_entrant = "speech-entrant.wav",
+	speech_inspector = "speech-inspector.wav",
+	traveler_walkin = "traveler-walkin.wav",
+	traveler_walkout = "traveler-walkout.wav",
+	paper_dragstart = "paper-dragstart.wav",
+	paper_dragstop = "paper-dragstop.wav",
+	paper_turnpage = "paper-turnpage.wav",
+	printer_feed = "printer-feed.wav",
+	printer_line = "printer-line.wav",
+	printer_tear = "printer-tear.wav",
+	button_down = "button-down.wav",
+	button_up = "button-up.wav",
+	booth_intro = "booth-intro.wav"
+}
+
+function PLAY_SFX(id)
+	if not AUDIO_READY or AUDIO.muted or (Options and Options["Sound"] == 0) then return end
+	local s = AUDIO.sfx[id]
+	if not s then
+		local filename = SFX_MAP[id]
+		if filename then
+			local path = "romfs:/ASSETS/SOUND/" .. filename
+			local ok, handle = pcall(Sound.openWav, path, false)
+			if ok and handle then
+				AUDIO.sfx[id] = handle
+				s = handle
+			end
+		end
+	end
+	if s then
+		-- Only pause channels that were previously played (valid CSND channel allocated)
+		if AUDIO.sfx_played[id] and Sound and Sound.pause then
+			pcall(Sound.pause, s)
+		end
+		-- In LPP-3DS CSND: loop argument must be literal boolean false for SOUND_ONE_SHOT
+		pcall(Sound.play, s, false)
+		AUDIO.sfx_played[id] = true
+	end
+end
+
+function PLAY_BGM(name, loop)
+	if not AUDIO_READY or AUDIO.muted or (Options and Options["Sound"] == 0) then return end
+	local wav_name = name:gsub("%.ogg$", ".wav")
+	if AUDIO.current_bgm_name == wav_name and AUDIO.current_bgm then
+		return
+	end
+	STOP_BGM()
+	local handle = AUDIO.bgm_cache[wav_name]
+	if not handle then
+		local path = "romfs:/ASSETS/SOUND/" .. wav_name
+		local ok, h = pcall(Sound.openWav, path, false)
+		if ok and h then
+			AUDIO.bgm_cache[wav_name] = h
+			handle = h
+		end
+	end
+	if handle then
+		AUDIO.current_bgm = handle
+		AUDIO.current_bgm_name = wav_name
+		local should_loop = (loop == true)
+		pcall(Sound.play, handle, should_loop)
+	end
+end
+
+function STOP_BGM()
+	if AUDIO.current_bgm then
+		if Sound and Sound.pause then
+			pcall(Sound.pause, AUDIO.current_bgm)
+		end
+		AUDIO.current_bgm = nil
+		AUDIO.current_bgm_name = nil
+	end
+end
+
+function PLAY_AMBIENT(name, loop)
+	if not AUDIO_READY or AUDIO.muted or (Options and Options["Sound"] == 0) then return end
+	local wav_name = name:gsub("%.ogg$", ".wav")
+	if AUDIO.current_ambient_name == wav_name and AUDIO.current_ambient then
+		return
+	end
+	STOP_AMBIENT()
+	local handle = AUDIO.bgm_cache[wav_name]
+	if not handle then
+		local path = "romfs:/ASSETS/SOUND/" .. wav_name
+		local ok, h = pcall(Sound.openWav, path, false)
+		if ok and h then
+			AUDIO.bgm_cache[wav_name] = h
+			handle = h
+		end
+	end
+	if handle then
+		AUDIO.current_ambient = handle
+		AUDIO.current_ambient_name = wav_name
+		local should_loop = (loop == true)
+		pcall(Sound.play, handle, should_loop)
+	end
+end
+
+function STOP_AMBIENT()
+	if AUDIO.current_ambient then
+		if Sound and Sound.pause then
+			pcall(Sound.pause, AUDIO.current_ambient)
+		end
+		AUDIO.current_ambient = nil
+		AUDIO.current_ambient_name = nil
+	end
+end
+
+function PAUSE_AUDIO()
+	if Sound and Sound.pause then
+		if AUDIO.current_ambient then pcall(Sound.pause, AUDIO.current_ambient) end
+		if AUDIO.current_bgm then pcall(Sound.pause, AUDIO.current_bgm) end
+		if AUDIO.sfx then
+			for id, h in pairs(AUDIO.sfx) do
+				if AUDIO.sfx_played[id] and h then pcall(Sound.pause, h) end
+			end
+		end
+	end
+end
+
+function RESUME_AUDIO()
+	if not AUDIO_READY or AUDIO.muted or (Options and Options["Sound"] == 0) then return end
+	if Sound and Sound.resume then
+		if AUDIO.current_ambient then pcall(Sound.resume, AUDIO.current_ambient) end
+		if AUDIO.current_bgm then pcall(Sound.resume, AUDIO.current_bgm) end
+	end
+end
+
+function TERM_AUDIO()
+	if not AUDIO_READY then return end
+	STOP_BGM()
+	STOP_AMBIENT()
+	if AUDIO.sfx then
+		for id, h in pairs(AUDIO.sfx) do
+			if AUDIO.sfx_played[id] and Sound and Sound.pause and h then
+				pcall(Sound.pause, h)
+			end
+		end
+	end
+	-- DO NOT call Sound.term()! LPP-3DS main.cpp already calls csndExit()/ndspExit() on exit.
+	-- Calling Sound.term() explicitly in Lua causes a double csndExit(), unmapping shared memory and causing Data Abort.
+	AUDIO_READY = false
+end
+
+
+
 TITLEi=0
 NORMAL_FONT = Graphics.loadImage(System.currentDirectory().."ASSETS/FONT/NORMAL_FONT.png")
 SMALL_FONT = Graphics.loadImage(System.currentDirectory().."ASSETS/FONT/SMALL_FONT.png")
@@ -237,6 +414,7 @@ Options={
 	["NiceShutter"] = 1, -- 0 - to Off Shutter Animation; 1 - to On Shutter Animation
 	["Car"] = 1, -- 0 to Delete Car from Screen; 1 to Add it
 	["Dialog"] = 1,
+	["Sound"] = 1, -- 0 - Mute; 1 - Sound On
 	["State"] = 0
 }
 model = System.getModel()
@@ -664,12 +842,19 @@ function CHECKBOX(x,y,wtc)
 	if TOUCHy>y and TOUCHy<y+15 and TOUCHx>x and TOUCHx<x+15 then
 		if Options[wtc] == CHECKBOX_init[wtc] then
 			if Options[wtc]==1 then 
-				Options[wtc]=0 
-				elseif Options[wtc]==0 then 
-				Options[wtc]=1 
+				Options[wtc]=0
+				if wtc=="Sound" then
+					STOP_BGM()
+					STOP_AMBIENT()
+				end
+			elseif Options[wtc]==0 then 
+				Options[wtc]=1
+				if wtc=="Sound" then
+					-- Sound re-enabled
+				end
 			end	
 		end
-		else
+	else
 		CHECKBOX_init[wtc]=Options[wtc]
 	end
 	if Options[wtc]==0 then	Graphics.drawPartialImage(x, y, 0, 0, 15, 15, CHECKBOXbutton)	elseif Options[wtc]==1 then	Graphics.drawPartialImage(x, y, 0, 15, 15, 15, CHECKBOXbutton)	end
@@ -713,8 +898,10 @@ function OptionsOP()
 end
 function ScreenButton(xbut,ybut,texture,key,word)
 	word.TOUCHED=word.TOUCHED or "NO"
-	if TOUCHx==0 and TOUCHy==0 and word.TOUCHED == "YES" and TOUCHer~="BB" then                                                                                                                        
+	if TOUCHx==0 and TOUCHy==0 and word.TOUCHED == "YES" and TOUCHer~="BB" then
+		PLAY_SFX("button_down")
 		if key==2 then
+			STOP_BGM()
 			if menu=="Selection" then
 				CLEAR_CITATIONS()
 			end
@@ -722,12 +909,14 @@ function ScreenButton(xbut,ybut,texture,key,word)
 				loadtex()
 			end
 			Timer.resume(GameTIME)
+			RESUME_AUDIO()
 		end
 		if key==0 then
 			CLEAR_CITATIONS()
 			if IS_STORY_MODE and (menu=="Pause" or menu==2) then
 				SAVE_STORY_PROGRESS()
 			end
+			STOP_AMBIENT()
 			Timer.reset(GameTIME)
 			Timer.reset(Clock)
 			Timer.reset(timer)
@@ -765,14 +954,18 @@ function ScreenButton(xbut,ybut,texture,key,word)
 			SWITCHER = 1
 		end
 		if key=="Exit" then
+			TERM_AUDIO()
 			if IS_STORY_MODE and (menu=="Pause" or menu==2) then
 				SAVE_STORY_PROGRESS()
 			end
 		end
 		if key=="Pause" then
 			Timer.pause(GameTIME)
+			PAUSE_AUDIO()
 		end
 		if key=="DayIntro" then
+			STOP_BGM()
+			STOP_AMBIENT()
 			START_STORY_MODE()
 			word.TOUCHED="NO"
 			return
@@ -835,6 +1028,15 @@ function MAP_MOVE() -- Moving of map background (BKG_TPS)
 	end
 end
 function CAGE_MOVE() -- Adds an Shutter
+	if PREV_SWITCHER == nil then PREV_SWITCHER = SWITCHER end
+	if SWITCHER ~= PREV_SWITCHER then
+		if SWITCHER == 0 then
+			PLAY_SFX("shutter_rise")
+		else
+			PLAY_SFX("shutter_drop")
+		end
+		PREV_SWITCHER = SWITCHER
+	end
 	if Options["NiceShutter"]==1 then
 		for i=1,6 do
 			CAGE.y[i] = CAGE.y[i] or CAGE.min+20*(i-1)
@@ -942,12 +1144,15 @@ function TOUCH_CHECK(word,key)
 				word.oldtouchy = TOUCHy - word.y
 				if word.status == "PRINTING" then
 					word.status = "IDLE"
+					PLAY_SFX("printer_tear")
 					if word.is_fatal and not PERFECT_GAMEOVER_READY then
 						PERFECT_GAMEOVER_READY = true
 						if PERFECT_TIMER == nil then PERFECT_TIMER = Timer.new() end
 						Timer.reset(PERFECT_TIMER)
 						Timer.resume(PERFECT_TIMER)
 					end
+				else
+					PLAY_SFX("paper_dragstart")
 				end
 			end
 
@@ -995,6 +1200,7 @@ function TOUCH_CHECK(word,key)
 		if (TOUCHx == 0 and TOUCHy == 0) and TOUCH == key then
 			word.oldtouchx = nil
 			word.oldtouchy = nil
+			PLAY_SFX("paper_dragstop")
 		end
 
 		if TOUCH ~= key and (word.oldtouchx ~= nil or word.oldtouchy ~= nil) then
@@ -1022,6 +1228,7 @@ function TOUCH_CHECK(word,key)
 			if	TOUCH=="ACTIVE" and TOUCHx >= word.x and TOUCHx <= word.x+Graphics.getImageWidth(word.tex2) and TOUCHy>=word.y and TOUCHy <= word.y+Graphics.getImageHeight(word.tex2) then 
 				TOUCH = key
 				word.velocity=0
+				PLAY_SFX("paper_dragstart")
 			end
 			if TOUCH == key then
 				word.oldtouchx = word.oldtouchx or TOUCHx-word.x
@@ -1051,6 +1258,7 @@ function TOUCH_CHECK(word,key)
 			if	TOUCHy>67 and TOUCH=="ACTIVE" and TOUCHx >= word.x and TOUCHx <= word.x+Graphics.getImageWidth(word.tex) and TOUCHy>=word.y and TOUCHy <= word.y+Graphics.getImageHeight(word.tex) then 
 				TOUCH = key
 				word.velocity=0
+				PLAY_SFX("paper_dragstart")
 			end
 			if TOUCH == key then
 				word.oldtouchx = word.oldtouchx or TOUCHx-word.x
@@ -1064,9 +1272,11 @@ function TOUCH_CHECK(word,key)
 				if TOUCHx>=word.x+218 and TOUCHx<=word.x+238 and TOUCHy>=word.y+144 and TOUCHy<word.y+158 and key=="RULEBOOK" and RULEBOOK.state<8 then
 					RULEBOOK.state=RULEBOOK.state+1
 					TOUCH="SHEET"
-					elseif TOUCHx>=word.x and TOUCHx<=word.x+16 and TOUCHy>=word.y+144 and TOUCHy<word.y+158 and key=="RULEBOOK" and RULEBOOK.state>2 then
+					PLAY_SFX("paper_turnpage")
+				elseif TOUCHx>=word.x and TOUCHx<=word.x+16 and TOUCHy>=word.y+144 and TOUCHy<word.y+158 and key=="RULEBOOK" and RULEBOOK.state>2 then
 					RULEBOOK.state=RULEBOOK.state-1
 					TOUCH="SHEET"
+					PLAY_SFX("paper_turnpage")
 				end
 			end
 		end
@@ -1123,6 +1333,7 @@ function TOUCH_CHECK(word,key)
 	if TOUCH~=key and word.oldtouchx~=nil and word.oldtouchy~=nil then
 		word.oldtouchx=nil
 		word.oldtouchy=nil
+		PLAY_SFX("paper_dragstop")
 	end
 	if TOUCH~=key and word.now==1 and key=="TRANSCRIPT" then
 		if word.x <= 16 then
@@ -1381,12 +1592,14 @@ function STAMP_CODE()
 		STAMP.velocity=23
 		TOUCH="STAMP"
 		STAMP.gravity = 0
+		PLAY_SFX("stampbar_open")
 	end
 	if TOUCHx>=STAMP.x and TOUCHx<=STAMP.x+10 and TOUCHy>=47 and TOUCHy<=104 and STAMP.state=="OPENED" and TOUCH=="ACTIVE" then 
 		STAMP.state="CLOSED"
 		STAMP.velocity=0
 		TOUCH="STAMP"
 		STAMP.gravity = 0
+		PLAY_SFX("stampbar_close")
 	end
 	if STAMP.x > 40 and STAMP.state=="OPENED" then
 		STAMP.gravity = 1
@@ -1417,6 +1630,10 @@ function STAMP_CODE()
 		if STAMP.red<38 then
 			STAMP.red=STAMP.red+4
 			if STAMP.red>=38 then
+				if not STAMP.red_down then
+					PLAY_SFX("stamp_down")
+					STAMP.red_down = true
+				end
 				if PASSPORT.x ~= nil then
 					if PASSPORT.x+130>STAMP.x+40 and PASSPORT.x<STAMP.x+40+75 and PASSPORT.y<38+87 and PASSPORT.y+162>38+57 and PASSPORT.now==0 then
 						statex=STAMP.x+42-PASSPORT.x
@@ -1468,6 +1685,10 @@ function STAMP_CODE()
 			end
 		end
 		else
+		if STAMP.red_down then
+			PLAY_SFX("stamp_up")
+			STAMP.red_down = false
+		end
 		if STAMP.red>22 then
 			STAMP.red=STAMP.red-4
 		end
@@ -1478,6 +1699,10 @@ function STAMP_CODE()
 			STAMP.green=STAMP.green+4
 		end
 		if STAMP.green>=38 then
+			if not STAMP.green_down then
+				PLAY_SFX("stamp_down")
+				STAMP.green_down = true
+			end
 			if PASSPORT.x ~= nil then
 				if PASSPORT.x+130>STAMP.x+160 and PASSPORT.x<STAMP.x+160+75 and PASSPORT.y<38+87 and PASSPORT.y+162>38+57 and PASSPORT.now==0 then
 					statex=STAMP.x+162-PASSPORT.x
@@ -1528,6 +1753,10 @@ function STAMP_CODE()
 			end
 		end
 		else
+		if STAMP.green_down then
+			PLAY_SFX("stamp_up")
+			STAMP.green_down = false
+		end
 		if STAMP.green>22 then
 			STAMP.green=STAMP.green-4
 		end
@@ -2021,6 +2250,9 @@ function DIALOG_SYSTEM()
 		if FACE.x==126 and SWITCHER==0 then
 			if  Timer.getTime(CBtime)>1000*(i-1) then
 				if CHATplace[i]==2 then
+					if CHATx[i] == nil then
+						PLAY_SFX("speech_entrant")
+					end
 					CHATx[i] = CHATx[i] or 210
 					if CHATx[i] < 290 then
 						Graphics.drawImage(CHATx[i], 103+(i-1)*12, SB)
@@ -2030,6 +2262,9 @@ function DIALOG_SYSTEM()
 						end
 					end
 					else
+					if CHATx[i] == nil then
+						PLAY_SFX("speech_inspector")
+					end
 					CHATx[i] = CHATx[i] or 112
 					if CHATx[i] > 32 then
 						Graphics.drawImage(CHATx[i], 103+(i-1)*12, SB)
@@ -2186,7 +2421,10 @@ function CHECK_EMPTYTABLE()
 				Timer.pause(PERFECT_TIMER)
 			end
 		end
-		if CheckPoint==0 then CheckPoint=2 end
+		if CheckPoint==0 then
+			CheckPoint=2
+			PLAY_SFX("traveler_walkout")
+		end
 		if stamp == "YES" and CheckPoint==2 then
 			FACE.x=FACE.x + 2.5
 			FACE.y=-(5*math.cos(15*(FACE.x-126)))+109
@@ -2256,6 +2494,7 @@ while true do
 					cit.status = "PRINTING"
 					cit.step_feed = 8
 					cit.step_pause = 0
+					PLAY_SFX("printer_line")
 					-- Apply mistake penalty at the exact moment citation emerges
 					if cit.penalty_pts and cit.penalty_pts > 0 then
 						SCORE = SCORE - cit.penalty_pts
@@ -2290,6 +2529,7 @@ while true do
 					if cit.step_pause <= 0 then
 						if cit.y > cit.target_y then
 							cit.step_feed = math.min(8, cit.y - cit.target_y)
+							PLAY_SFX("printer_line")
 						else
 							cit.y = cit.target_y
 							cit.status = "IDLE"
@@ -2381,6 +2621,8 @@ while true do
 		if CheckPoint == 1 and Controls.check(pad,KEY_A) and not Controls.check(oldpad,KEY_A) then
 			if not (IS_STORY_MODE and DAY_OVER) and not PERFECT_GAMEOVER_ACTIVE then
 				PEOPLESCORE = PEOPLESCORE + 1
+				PLAY_SFX("speech_announce")
+				PLAY_SFX("traveler_walkin")
 				RANDOMIZE()
 				CheckPoint=0
 			end
@@ -2558,6 +2800,7 @@ while true do
 		end
 		if Controls.check(pad,KEY_START) and not Controls.check(oldpad,KEY_START) and FADE_STATE=="NONE" then
 			Timer.pause(GameTIME)
+			PAUSE_AUDIO()
 			menu="Pause"
 		end
 		elseif menu==0 then
@@ -2598,6 +2841,7 @@ while true do
 			TITLEi=1
 		end
 		if Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A) and TITLEy < -128 then
+			STOP_BGM()
 			START_STORY_MODE()
 		end
 		if Controls.check(pad, KEY_X) and not Controls.check(oldpad, KEY_X) and TITLEy < -128 then
@@ -2607,6 +2851,7 @@ while true do
 		end
 		TITLE_MOVE()
 		elseif menu=="Exit" then
+		TERM_AUDIO()
 		if IS_STORY_MODE then
 			SAVE_STORY_PROGRESS()
 		end
@@ -2663,10 +2908,12 @@ while true do
 		GPU_DrawText(120,29,"Shadow........",WHITE,"l",320,SMALL_FONT,7)
 		GPU_DrawText(120,44,"Dialog............",WHITE,"l",320,SMALL_FONT,7)
 		GPU_DrawText(120,59,"Car..................",WHITE,"l",320,SMALL_FONT,7)
+		GPU_DrawText(120,74,"Sound..............",WHITE,"l",320,SMALL_FONT,7)
 		CHECKBOX(180,10,"TextAlign")
 		CHECKBOX(180,25,"Shadow")
 		CHECKBOX(180,40,"Dialog")
 		CHECKBOX(180,55,"Car")
+		CHECKBOX(180,70,"Sound")
 		ScreenButton(96,102,RESUMEbutton,2,RESUME)
 		ScreenButton(96,132,MAINMENUbutton,0,MAINMENU)
 		ScreenButton(96,162,QUITbutton,"Exit",QUIT)
@@ -2676,6 +2923,7 @@ while true do
 		end
 		if Controls.check(pad, KEY_START) and not Controls.check(oldpad, KEY_START) then
 			Timer.resume(GameTIME)
+			RESUME_AUDIO()
 			menu = 2
 		end
 		screenshotmake()
@@ -2883,6 +3131,9 @@ while true do
 			RULEBOOK.x = 5
 			RULEBOOK.y = 23
 			RULEBOOK.now = 1
+			STOP_BGM()
+			STOP_AMBIENT()
+			PLAY_SFX("booth_intro")
 			menu = 2
 		end
 		if Controls.check(pad, KEY_B) and not Controls.check(oldpad, KEY_B) then
@@ -2902,11 +3153,14 @@ while true do
 			OPENCHECKPOINT_TRIED = nil
 			CLEAR_CITATIONS()
 			IS_STORY_MODE = false
+			STOP_AMBIENT()
+			STOP_BGM()
 			menu = 0
 		end
 		screenshotmake()
 		Graphics.termBlend()
 		elseif menu=="DaySummary" then
+		STOP_AMBIENT()
 		if SCORE < 0 then
 			-- ==============================================================
 			-- [DEBT GAME OVER: SOMBER / DARK ARREST SCREEN (PAPERS, PLEASE)]
@@ -3030,6 +3284,7 @@ while true do
 				IS_STORY_MODE = false
 				FADE_STATE = "NONE"
 				FADE_ALPHA = 0
+				STOP_BGM()
 				menu = 0
 			end
 			
@@ -3163,6 +3418,7 @@ while true do
 				IS_STORY_MODE = false
 				FADE_STATE = "NONE"
 				FADE_ALPHA = 0
+				STOP_BGM()
 				menu = 0
 			end
 			
