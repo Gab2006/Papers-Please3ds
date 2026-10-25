@@ -15,8 +15,24 @@ WRONGTABLE = {
 	[14]="Invalid expiration date",
 	[15]="Invalid expiration date",
 	[16]="Forged or missing seal",
-	[17]="Forged or missing seal"
+	[17]="Forged or missing seal",
+	[18]="Entry permit duration mismatch"
 }
+
+NATION_NAMES = {
+	[1] = "ANTEGRIA",
+	[2] = "ARSTOTZKA",
+	[3] = "IMPOR",
+	[4] = "KOLECHIA",
+	[5] = "REPUBLIA",
+	[6] = "UNITED FEDERATION",
+	[7] = "ARSTOTZKA",
+	[8] = "OBRISTAN"
+}
+
+function GET_NATION_NAME(passport_id)
+	return NATION_NAMES[passport_id] or "UNKNOWN"
+end
 CITY={
 	ANTEGRIA={
 		"St. Marmero",
@@ -272,6 +288,7 @@ DAYS_CONFIG = {
 		allow_foreigners = false,
 		require_permit   = false,
 		require_workpass = false,
+		daily_expenses   = 20,
 		duration_sec     = 180 -- 3 minuti reali (09:00 - 18:00)
 	},
 	[2] = {
@@ -286,6 +303,7 @@ DAYS_CONFIG = {
 		allow_foreigners = true,
 		require_permit   = false,
 		require_workpass = false,
+		daily_expenses   = 20,
 		duration_sec     = 180
 	},
 	[3] = {
@@ -300,6 +318,7 @@ DAYS_CONFIG = {
 		allow_foreigners = true,
 		require_permit   = true,
 		require_workpass = false,
+		daily_expenses   = 20,
 		duration_sec     = 180
 	},
 	[4] = {
@@ -314,6 +333,97 @@ DAYS_CONFIG = {
 		allow_foreigners = true,
 		require_permit   = true,
 		require_workpass = true,
+		daily_expenses   = 20,
 		duration_sec     = 180
 	}
-}
+}
+
+function GET_DAY_CONFIG(day)
+	day = tonumber(day) or 1
+	if day < 1 then day = 1 end
+
+	if day <= 4 and DAYS_CONFIG and DAYS_CONFIG[day] then
+		local cfg = DAYS_CONFIG[day]
+		if not cfg.daily_expenses then
+			cfg.daily_expenses = 20
+		end
+		return cfg
+	end
+
+	-- Procedural Deterministic Generator for Days 5+
+	local tier = 1
+	local daily_expenses = 20
+	if day >= 16 then
+		tier = 3
+		daily_expenses = 30
+	elseif day >= 9 then
+		tier = 2
+		daily_expenses = 25
+	end
+
+	-- Calendar Date calculation (base: 27.11.1982 for Day 5)
+	local offset = day - 5
+	local d = 27 + offset
+	local m = 11
+	local y = 1982
+	while d > 30 do
+		d = d - 30
+		m = m + 1
+		if m > 12 then
+			m = 1
+			y = y + 1
+		end
+	end
+	local d_str = (d < 10 and "0" .. d or tostring(d)) .. "." .. (m < 10 and "0" .. m or tostring(m)) .. "." .. tostring(y)
+
+	-- Deterministic PRNG from day seed (31-bit LCG)
+	local prng = (day * 1103515245 + 12345) % 2147483648
+	local embargo_nation = nil
+	local wanted_name = nil
+	local bulletin_rules = {
+		"ALL FOREIGNERS REQUIRE ENTRY PERMIT",
+		"WORKERS REQUIRE VALID WORK PASS"
+	}
+
+	local FOREIGN_NATIONS = { "ANTEGRIA", "IMPOR", "KOLECHIA", "REPUBLIA", "UNITED FEDERATION", "OBRISTAN" }
+
+	if tier >= 1 and (prng % 3 == 0) then
+		local nat_idx = (math.floor(prng / 7) % #FOREIGN_NATIONS) + 1
+		embargo_nation = FOREIGN_NATIONS[nat_idx]
+		table.insert(bulletin_rules, "DENY ALL CITIZENS OF " .. embargo_nation)
+	end
+
+	if tier >= 2 and (prng % 2 == 0) then
+		local w_first = MNAMES.FN[(math.floor(prng / 13) % #MNAMES.FN) + 1]
+		local w_last = MNAMES.LN[(math.floor(prng / 17) % #MNAMES.LN) + 1]
+		wanted_name = w_first .. " " .. w_last
+		table.insert(bulletin_rules, "WANTED CRIMINAL: " .. wanted_name)
+	end
+
+	table.insert(bulletin_rules, "VERIFY PURPOSE AND DURATION IN TRANSCRIPT")
+
+	local headline = "BORDER SECURITY TIGHTENED"
+	local subline = "Ministry of Admission issues high alert directives."
+	if embargo_nation then
+		headline = "RESTRICTIONS ON " .. embargo_nation
+		subline = "Suspension of all diplomatic entry privileges."
+	elseif wanted_name then
+		headline = "FUGITIVE AT LARGE: " .. string.upper(wanted_name)
+		subline = "State Police notify border checkpoints for apprehension."
+	end
+
+	return {
+		date             = d_str,
+		headline         = headline,
+		subline          = subline,
+		bulletin_rules   = bulletin_rules,
+		allow_foreigners = true,
+		require_permit   = true,
+		require_workpass = true,
+		embargo_nation   = embargo_nation,
+		wanted_name      = wanted_name,
+		daily_expenses   = daily_expenses,
+		duration_sec     = 180
+	}
+end
+

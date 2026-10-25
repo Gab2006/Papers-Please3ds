@@ -24,6 +24,13 @@ BROWN3=Color.new(106,82,47)
 TRANSCRIPTBROWN = Color.new(87,72,72)
 TRANSCRIPTBLUE = Color.new(210,237,236)
 CITATION_COLOR = Color.new(90,85,89)
+-- [THEMATIC ARSTOTZKAN HUD PALETTE]
+HUD_GREEN_BG = Color.new(24, 34, 22)
+HUD_GREEN_BORDER = Color.new(55, 115, 50)
+HUD_GREEN_TEXT = Color.new(125, 205, 110)
+HUD_RED_BG = Color.new(36, 20, 20)
+HUD_RED_BORDER = Color.new(140, 40, 40)
+HUD_RED_TEXT = Color.new(220, 85, 85)
 Th,Tm,Ts = System.getTime() -- Get System Time
 today={} 
 today.day_value,today.day,today.month,today.year = System.getDate() -- Get System Date
@@ -424,8 +431,8 @@ if model==2 or model>3 then
 	Options["NiceShutter"]=1
 	Options["Car"]=1
 	Options["Dialog"] = 1
-	System.setCpuSpeed(NEW_3DS_CLOCK)
-	else
+	System.setCpuSpeed(OLD_3DS_CLOCK)
+else
 	System.setCpuSpeed(OLD_3DS_CLOCK)
 end
 function BKG_SHDW() -- Adds shadow behind CAGE
@@ -444,6 +451,28 @@ function BKG_SHDW() -- Adds shadow behind CAGE
 	Graphics.drawImage(112,CAGE.yshadow,SHADOW_TXR)
 end
 pi=math.pi
+
+-- [LPP-3DS HARDWARE TIMER NORMALIZATION]
+-- In LPP-3DS, Timer.getTime() divides raw hardware ticks by 268123.48 (assuming 268 MHz O3DS).
+-- If the CPU speed is set or forced to 804 MHz (N3DS mode / Citra / Luma3DS clock boost),
+-- hardware ticks accumulate 3x faster, causing timers to advance 3000 ms per second.
+-- Consequently, a 3-minute shift (180s = 180,000ms) expires in only 60 real seconds (1 minute).
+-- We normalize Timer.getTime() so it always measures real wall-clock milliseconds regardless of CPU frequency.
+if Timer and Timer.getTime then
+	local _raw_Timer_getTime = Timer.getTime
+	Timer.getTime = function(tm)
+		if not tm then return 0 end
+		local ms = _raw_Timer_getTime(tm)
+		if System and System.getCpuSpeed then
+			local spd = System.getCpuSpeed()
+			if spd and spd > 400 then
+				return math.floor(ms * 268 / spd)
+			end
+		end
+		return ms
+	end
+end
+
 timer = Timer.new()
 Clock = Timer.new()
 GameTIME = Timer.new()
@@ -727,13 +756,13 @@ function LOAD_GAME()
 				end
 			else
 				local d = tonumber(content)
-				if d and d >= 1 and (not DAYS_CONFIG or d <= #DAYS_CONFIG) then
+				if d and d >= 1 then
 					data.day = math.floor(d)
 				end
 			end
 		end
 	end)
-	if not data.day or data.day < 1 or (DAYS_CONFIG and data.day > #DAYS_CONFIG) then
+	if not data.day or data.day < 1 then
 		data.day = 1
 	end
 	CURRENT_SAVE = data
@@ -749,7 +778,8 @@ function SAVE_STORY_PROGRESS()
 	else
 		current_elapsed = DAY_TIME_OFFSET or 0
 	end
-	local total_ms = (DAYS_CONFIG and DAYS_CONFIG[CURRENT_DAY] and DAYS_CONFIG[CURRENT_DAY].duration_sec or 180) * 1000
+	local day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
+	local total_ms = (day_cfg and day_cfg.duration_sec or 180) * 1000
 	if current_elapsed >= total_ms then
 		current_elapsed = total_ms
 	end
@@ -771,7 +801,7 @@ function START_STORY_MODE()
 	IS_STORY_MODE = true
 	MODEselect = 4
 	local save_data = LOAD_GAME()
-	if save_data and save_data.in_progress == 1 and save_data.day and save_data.day >= 1 and (not DAYS_CONFIG or save_data.day <= #DAYS_CONFIG) then
+	if save_data and save_data.in_progress == 1 and save_data.day and save_data.day >= 1 then
 		-- [RESUME IN-PROGRESS STORY MODE]
 		CURRENT_DAY = save_data.day
 		DAY_TIME_OFFSET = save_data.elapsed or 0
@@ -789,7 +819,8 @@ function START_STORY_MODE()
 		Timer.resume(GameTIME)
 		Timer.reset(Clock)
 		clockInt = 0
-		local total_ms = (DAYS_CONFIG and DAYS_CONFIG[CURRENT_DAY] and DAYS_CONFIG[CURRENT_DAY].duration_sec or 180) * 1000
+		local day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
+		local total_ms = (day_cfg and day_cfg.duration_sec or 180) * 1000
 		if DAY_TIME_OFFSET >= total_ms then
 			DAY_OVER = true
 			TIME = 0
@@ -824,7 +855,7 @@ function START_STORY_MODE()
 	else
 		-- [START NEW DAY OR NOT IN PROGRESS]
 		CURRENT_DAY = (save_data and save_data.day) or 1
-		if DAYS_CONFIG and (CURRENT_DAY > #DAYS_CONFIG or CURRENT_DAY < 1) then
+		if CURRENT_DAY < 1 then
 			CURRENT_DAY = 1
 		end
 		DAY_START_SCORE = (save_data and save_data.score) or 0
@@ -1802,27 +1833,36 @@ end
 function PURPOSEGENERATOR()
 	local a
 	a = math.random(1,4)
+	local phrase = "Transit"
 	if a==1 then
 		a="TRANSIT" 
-		table.insert(CHAT,#CHAT+1,"Transit")
-		table.insert(CHATplace,#CHATplace+1,2)
-	end
-	if a==2 then 
+		local r = math.random(1,3)
+		if r==1 then phrase="Transit"
+		elseif r==2 then phrase="Transit only"
+		else phrase="Passing through" end
+	elseif a==2 then 
 		a="VISIT" 
-		table.insert(CHAT,#CHAT+1,"Visiting")
-		table.insert(CHATplace,#CHATplace+1,2)
-	end
-	if a==3 then 
+		local r = math.random(1,4)
+		if r==1 then phrase="Visiting"
+		elseif r==2 then phrase="Visiting family"
+		elseif r==3 then phrase="Pleasure"
+		else phrase="Here on holiday" end
+	elseif a==3 then 
 		a="IMMIGRATE" 
-		table.insert(CHAT,#CHAT+1,"Immigrating")
-		table.insert(CHATplace,#CHATplace+1,2)
-	end
-	
-	if a==4 then 
+		local r = math.random(1,3)
+		if r==1 then phrase="Immigrating"
+		elseif r==2 then phrase="To live here"
+		else phrase="Seeking residence" end
+	elseif a==4 then 
 		a="WORK" 
-		table.insert(CHAT,#CHAT+1,"Working")
-		table.insert(CHATplace,#CHATplace+1,2)
+		local r = math.random(1,4)
+		if r==1 then phrase="Working"
+		elseif r==2 then phrase="Here for employment"
+		elseif r==3 then phrase="Labor and business"
+		else phrase="Job placement" end
 	end
+	table.insert(CHAT,#CHAT+1,phrase)
+	table.insert(CHATplace,#CHATplace+1,2)
 	return a
 end
 function DURATIONGENERATOR()
@@ -1830,85 +1870,116 @@ function DURATIONGENERATOR()
 	local b
 	if PERSON.permitpurpose=="TRANSIT" then 
 		a=math.random(1,2)
-		if a==1 then a="2 DAYS" 
-			b = math.random(1,2)
-			if b==1 then b="Just 2 days" elseif b==2 then b="Couple a days" end
+		if a==1 then
+			a="2 DAYS" 
+			local r = math.random(1,4)
+			if r==1 then b="Just 2 days"
+			elseif r==2 then b="Couple a days"
+			elseif r==3 then b="Visiting for 2 days"
+			else b="Transit for 2 days" end
 			table.insert(CHAT,#CHAT+1,b)
 			table.insert(CHATplace,#CHATplace+1,2)
-			else 
+		else 
 			a="14 DAYS" 
-			b=math.random(1,3)
-			if b==1 then b="Couple weeks" elseif b==2 then b="Just 14 days" elseif b==3 then b="Only two weeks" end
+			local r = math.random(1,4)
+			if r==1 then b="Couple weeks"
+			elseif r==2 then b="Just 14 days"
+			elseif r==3 then b="Only two weeks"
+			else b="Stay for 14 days" end
 			table.insert(CHAT,#CHAT+1,b)
 			table.insert(CHATplace,#CHATplace+1,2)
 		end
-		elseif PERSON.permitpurpose=="VISIT" then
+	elseif PERSON.permitpurpose=="VISIT" then
 		a=math.random(1,4)
 		if a==1 then 
-			
 			a="14 DAYS" 
-			b=math.random(1,3)
-			if b==1 then b="Couple weeks" elseif b==2 then b="Just 14 days" elseif b==3 then b="Only two weeks" end
+			local r = math.random(1,4)
+			if r==1 then b="Couple weeks"
+			elseif r==2 then b="Just 14 days"
+			elseif r==3 then b="Only two weeks"
+			else b="Stay for 14 days" end
 			table.insert(CHAT,#CHAT+1,b)
 			table.insert(CHATplace,#CHATplace+1,2)
-			elseif a==2 then
-			
+		elseif a==2 then
 			a="1 MONTH" 
-			b=math.random(1,3)
-			if b==1 then b="30 days" elseif b==2 then b="A few weeks" elseif b==3 then b="One month" end
+			local r = math.random(1,4)
+			if r==1 then b="30 days"
+			elseif r==2 then b="A few weeks"
+			elseif r==3 then b="One month"
+			else b="Visiting for 1 month" end
 			table.insert(CHAT,#CHAT+1,b)
 			table.insert(CHATplace,#CHATplace+1,2)
-			elseif a==3 then
-			
+		elseif a==3 then
 			a="2 MONTHS" 
-			b=math.random(1,4)
-			if b==1 then b="60 days" elseif b==2 then b="8 weeks" elseif b==3 then b="Couple months" elseif b==4 then b="Two months" end
+			local r = math.random(1,4)
+			if r==1 then b="60 days"
+			elseif r==2 then b="8 weeks"
+			elseif r==3 then b="Couple months"
+			else b="Two months" end
 			table.insert(CHAT,#CHAT+1,b)
 			table.insert(CHATplace,#CHATplace+1,2)
-			elseif a==4 then
-			
+		elseif a==4 then
 			a="3 MONTHS" 
-			b=math.random(1,4)
-			if b==1 then b="90 days" elseif b==2 then b="12 weeks" elseif b==3 then b="Three months" elseif b==4 then b="A few months" end
+			local r = math.random(1,4)
+			if r==1 then b="90 days"
+			elseif r==2 then b="12 weeks"
+			elseif r==3 then b="Three months"
+			else b="A few months" end
 			table.insert(CHAT,#CHAT+1,b)
 			table.insert(CHATplace,#CHATplace+1,2)
 		end
-		elseif PERSON.permitpurpose=="IMMIGRATE" then
+	elseif PERSON.permitpurpose=="IMMIGRATE" then
 		a="FOREVER"
-		b=math.random(1,2)
-		if b==1 then b="Forever" elseif b==2 then b="Until i die" end
+		local r = math.random(1,3)
+		if r==1 then b="Forever"
+		elseif r==2 then b="Until i die"
+		else b="Permanent stay" end
 		table.insert(CHAT,#CHAT+1,b)
 		table.insert(CHATplace,#CHATplace+1,2)
-		elseif PERSON.permitpurpose=="WORK" then
+	elseif PERSON.permitpurpose=="WORK" then
 		a=math.random(1,5)
 		if a==1 then 
 			a="1 MONTH" 
-			b=math.random(1,3)
-			if b==1 then b="30 days" elseif b==2 then b="A few weeks" elseif b==3 then b="One month" end
+			local r = math.random(1,4)
+			if r==1 then b="30 days"
+			elseif r==2 then b="A few weeks"
+			elseif r==3 then b="One month"
+			else b="Work for 1 month" end
 			table.insert(CHAT,#CHAT+1,b)
 			table.insert(CHATplace,#CHATplace+1,2)
-			elseif a==2 then 
+		elseif a==2 then 
 			a="2 MONTHS" 
-			b=math.random(1,4)
-			if b==1 then b="60 days" elseif b==2 then b="8 weeks" elseif b==3 then b="Couple months" elseif b==4 then b="Two months" end
+			local r = math.random(1,4)
+			if r==1 then b="60 days"
+			elseif r==2 then b="8 weeks"
+			elseif r==3 then b="Couple months"
+			else b="Two months" end
 			table.insert(CHAT,#CHAT+1,b)
 			table.insert(CHATplace,#CHATplace+1,2)
-			elseif a==3 then 
+		elseif a==3 then 
 			a="3 MONTHS" 
-			b=math.random(1,4)
-			if b==1 then b="90 days" elseif b==2 then b="12 weeks" elseif b==3 then b="Three months" elseif b==4 then b="A few months" end
+			local r = math.random(1,4)
+			if r==1 then b="90 days"
+			elseif r==2 then b="12 weeks"
+			elseif r==3 then b="Three months"
+			else b="A few months" end
 			table.insert(CHAT,#CHAT+1,b)
 			table.insert(CHATplace,#CHATplace+1,2)
-			elseif a==4 then 
+		elseif a==4 then 
 			a="6 MONTHS" 
-			b=math.random(1,2)
-			if b==1 then b="Six months" elseif b==2 then b="Half a year" end
+			local r = math.random(1,3)
+			if r==1 then b="Six months"
+			elseif r==2 then b="Half a year"
+			else b="24 weeks" end
 			table.insert(CHAT,#CHAT+1,b)
 			table.insert(CHATplace,#CHATplace+1,2)
-			elseif a==5 then 
+		elseif a==5 then 
 			a="1 Year" 
-			b=math.random(1,3)
-			if b==1 then b="One year" elseif b==2 then b="Full year" elseif b==3 then b="A year" end
+			local r = math.random(1,4)
+			if r==1 then b="One year"
+			elseif r==2 then b="Full year"
+			elseif r==3 then b="A year"
+			else b="12 months" end
 			table.insert(CHAT,#CHAT+1,b)
 			table.insert(CHATplace,#CHATplace+1,2)
 		end
@@ -1922,12 +1993,15 @@ function FORMAT_DATE(day, month, year)
 end
 
 function GET_CURRENT_GAME_DATE()
-	if IS_STORY_MODE and DAYS_CONFIG and DAYS_CONFIG[CURRENT_DAY] and DAYS_CONFIG[CURRENT_DAY].date then
-		local d_str = DAYS_CONFIG[CURRENT_DAY].date
-		local d = tonumber(string.sub(d_str, 1, 2)) or 23
-		local m = tonumber(string.sub(d_str, 4, 5)) or 11
-		local y = tonumber(string.sub(d_str, 7, 10)) or 1982
-		return d, m, y, d_str
+	if IS_STORY_MODE then
+		local day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
+		if day_cfg and day_cfg.date then
+			local d_str = day_cfg.date
+			local d = tonumber(string.sub(d_str, 1, 2)) or 23
+			local m = tonumber(string.sub(d_str, 4, 5)) or 11
+			local y = tonumber(string.sub(d_str, 7, 10)) or 1982
+			return d, m, y, d_str
+		end
 	else
 		local d = today.day or 20
 		local m = today.month or 10
@@ -2013,18 +2087,56 @@ function RANDOMIZE()
 	while PERSON.passport==7 do
 		PERSON.passport = 2
 	end
+
+	local day_cfg = nil
+	if IS_STORY_MODE then
+		day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
+	end
+
+	-- Embargo check & spawn (25% chance to spawn citizen of embargoed nation)
+	if IS_STORY_MODE and day_cfg and day_cfg.embargo_nation then
+		if math.random(1, 4) == 1 then
+			for id, nat in pairs(NATION_NAMES) do
+				if nat == day_cfg.embargo_nation then
+					PERSON.passport = id
+					break
+				end
+			end
+		end
+	end
+
 	PERSON.GNDR = GENDERGENERATOR()
 	PERSON.idcardfirstname,PERSON.idcardlastname=NAMEGENERATOR()
 	PERSON.name = tostring(PERSON.idcardfirstname.." "..PERSON.idcardlastname)
+
+	-- Wanted fugitive check & spawn (20% chance to spawn wanted fugitive)
+	PERSON.is_wanted = false
+	if IS_STORY_MODE and day_cfg and day_cfg.wanted_name then
+		if math.random(1, 5) == 1 then
+			PERSON.is_wanted = true
+			PERSON.name = day_cfg.wanted_name
+			local s_idx = string.find(day_cfg.wanted_name, " ")
+			if s_idx then
+				PERSON.idcardfirstname = string.sub(day_cfg.wanted_name, 1, s_idx - 1)
+				PERSON.idcardlastname = string.sub(day_cfg.wanted_name, s_idx + 1)
+			else
+				PERSON.idcardfirstname = day_cfg.wanted_name
+				PERSON.idcardlastname = ""
+			end
+		end
+	end
+
+	PERSON.transcript_mismatch = false
+	PERSON.is_embargoed = false
 	PERSON.DOB = DOBGENERATOR()
 	PERSON.COL = FORDOCUMENT[PERSON.passport][math.random(1,3)]
 	PERSON.passEXP=DATEGENERATOR("y")
 	PERSON.ID=makeString(5).."-"..makeString(5)
 	local give_permit = true
 	local give_workpass = true
-	if IS_STORY_MODE and DAYS_CONFIG[CURRENT_DAY] then
-		give_permit = DAYS_CONFIG[CURRENT_DAY].require_permit
-		give_workpass = DAYS_CONFIG[CURRENT_DAY].require_workpass
+	if IS_STORY_MODE and day_cfg then
+		give_permit = day_cfg.require_permit
+		give_workpass = day_cfg.require_workpass
 	end
 
 	if PERSON.passport==2 then
@@ -2079,13 +2191,18 @@ function RANDOMIZE()
 	end
 	
 	wrong = math.random(1,#WRONGTABLE)
-	if IS_STORY_MODE and DAYS_CONFIG[CURRENT_DAY] then
-		if not give_permit and (wrong==7 or wrong==9 or wrong==15 or wrong==17) then
+	if IS_STORY_MODE and day_cfg then
+		if not give_permit and (wrong==7 or wrong==9 or wrong==15 or wrong==17 or wrong==18) then
 			wrong = 1
 		end
 		if not give_workpass and wrong==16 then
 			wrong = 1
 		end
+		if (CURRENT_DAY < 5 or not give_permit or PERSON.passport == 2) and wrong == 18 then
+			wrong = 1
+		end
+	elseif not IS_STORY_MODE and wrong == 18 then
+		wrong = 1
 	end
 	if wrong==4 then
 		if PERSON.passport==2 then
@@ -2164,11 +2281,41 @@ function RANDOMIZE()
 			else
 			wrong=1
 		end
+		elseif wrong==18 then
+		if PERSON.passport~=2 and give_permit then
+			PERSON.transcript_mismatch = true
+			if PERSON.permitduration == "2 DAYS" then
+				PERSON.permitduration = "1 MONTH"
+			elseif PERSON.permitduration == "14 DAYS" then
+				PERSON.permitduration = "2 DAYS"
+			elseif PERSON.permitduration == "1 MONTH" then
+				PERSON.permitduration = "2 DAYS"
+			elseif PERSON.permitduration == "2 MONTHS" or PERSON.permitduration == "3 MONTHS" then
+				PERSON.permitduration = "14 DAYS"
+			elseif PERSON.permitduration == "FOREVER" then
+				PERSON.permitduration = "3 MONTHS"
+			elseif PERSON.permitduration == "6 MONTHS" or PERSON.permitduration == "1 Year" then
+				PERSON.permitduration = "14 DAYS"
+			else
+				PERSON.permitduration = "2 DAYS"
+			end
+		else
+			wrong = 1
+		end
 	end
 	LASTWRONGCONST = WRONGCONST
 	WRONGCONST=WRONGTABLE[wrong]
-	if IS_STORY_MODE and DAYS_CONFIG[CURRENT_DAY] and not DAYS_CONFIG[CURRENT_DAY].allow_foreigners and PERSON.passport~=2 then
-		WRONGCONST = "Foreigners not allowed"
+	if IS_STORY_MODE and day_cfg then
+		if not day_cfg.allow_foreigners and PERSON.passport~=2 then
+			WRONGCONST = "Foreigners not allowed"
+		elseif day_cfg.embargo_nation and GET_NATION_NAME(PERSON.passport) == day_cfg.embargo_nation then
+			PERSON.is_embargoed = true
+			WRONGCONST = "Violation of diplomatic sanctions"
+		elseif PERSON.is_wanted then
+			WRONGCONST = "Wanted fugitive admitted"
+		elseif PERSON.transcript_mismatch then
+			WRONGCONST = "Entry permit duration mismatch"
+		end
 	end
 	if CITATION_COUNT > 0 then
 		for i = 1, CITATION_COUNT do
@@ -2311,22 +2458,52 @@ function DIALOG_SYSTEM()
 end
 function CHECK_EMPTYTABLE()
 	if not HAS_TRAVELER_DOCS() and stamp ~= nil then
-		if stamp == "YES" and WRONGCONST == "Nothing" and CheckPoint==0 then
+		local has_embargo_violation = false
+		local has_wanted_violation = false
+		local has_transcript_violation = false
+
+		if IS_STORY_MODE then
+			local day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
+			if day_cfg then
+				if day_cfg.embargo_nation and GET_NATION_NAME(PERSON.passport) == day_cfg.embargo_nation then
+					has_embargo_violation = true
+				end
+				if day_cfg.wanted_name and PERSON.name == day_cfg.wanted_name then
+					has_wanted_violation = true
+				end
+				if PERSON.transcript_mismatch then
+					has_transcript_violation = true
+				end
+			end
+		end
+
+		local is_invalid_entrant = (WRONGCONST ~= "Nothing") or has_embargo_violation or has_wanted_violation or has_transcript_violation
+
+		if stamp == "YES" and not is_invalid_entrant and CheckPoint==0 then
 			table.insert(PENDING_REWARDS, {
 				delay = 600,
-				points = plusPOINTS,
+				points = IS_STORY_MODE and 5 or plusPOINTS,
 				is_story = IS_STORY_MODE
 			})
 			if IS_STORY_MODE then
 				DAY_INSPECTED_COUNT = DAY_INSPECTED_COUNT + 1
 			end
-			elseif stamp == "YES" and WRONGCONST ~="Nothing" and CheckPoint==0 then
+		elseif stamp == "YES" and is_invalid_entrant and CheckPoint==0 then
 			WRONGMANn = WRONGMANn+1
 			if IS_STORY_MODE then
 				DAY_MISTAKES_COUNT = DAY_MISTAKES_COUNT + 1
 				DAY_INSPECTED_COUNT = DAY_INSPECTED_COUNT + 1
 			end
-			local reason_text = string.upper(WRONGCONST)
+			local reason_text = "INVALID ADMISSION"
+			if has_embargo_violation then
+				reason_text = "VIOLATION OF DIPLOMATIC SANCTIONS"
+			elseif has_wanted_violation then
+				reason_text = "WANTED FUGITIVE ADMITTED"
+			elseif has_transcript_violation then
+				reason_text = "ENTRY PERMIT DURATION MISMATCH"
+			elseif WRONGCONST ~= "Nothing" then
+				reason_text = string.upper(WRONGCONST)
+			end
 			local penalty_text = ""
 			local penalty_pts = 0
 			local penalty_time = 0
@@ -2378,16 +2555,16 @@ function CHECK_EMPTYTABLE()
 				Timer.reset(PERFECT_TIMER)
 				Timer.pause(PERFECT_TIMER)
 			end
-			elseif stamp == "NO" and WRONGCONST ~="Nothing" and CheckPoint==0 then
+		elseif stamp == "NO" and is_invalid_entrant and CheckPoint==0 then
 			table.insert(PENDING_REWARDS, {
 				delay = 600,
-				points = plusPOINTS,
+				points = IS_STORY_MODE and 5 or plusPOINTS,
 				is_story = IS_STORY_MODE
 			})
 			if IS_STORY_MODE then
 				DAY_INSPECTED_COUNT = DAY_INSPECTED_COUNT + 1
 			end
-			elseif stamp == "NO" and WRONGCONST =="Nothing" and CheckPoint==0 then
+		elseif stamp == "NO" and not is_invalid_entrant and CheckPoint==0 then
 			WRONGMANn = WRONGMANn+1
 			if IS_STORY_MODE then
 				DAY_MISTAKES_COUNT = DAY_MISTAKES_COUNT + 1
@@ -2463,8 +2640,9 @@ function LOAD_CLOCK()
 	local gd, gm, gy, g_date_str = GET_CURRENT_GAME_DATE()
 	local d_short = string.sub(g_date_str, 1, 6) .. string.sub(g_date_str, -2)
 	GPU_DrawText(358, 228, d_short, BROWN2, "l", 400, DIGITS, 5)
-	if IS_STORY_MODE and DAYS_CONFIG and DAYS_CONFIG[CURRENT_DAY] then
-		local total_day_ms = (DAYS_CONFIG[CURRENT_DAY].duration_sec or 180) * 1000
+	if IS_STORY_MODE then
+		local day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
+		local total_day_ms = (day_cfg and day_cfg.duration_sec or 180) * 1000
 		local elapsed = Timer.getTime(GameTIME) + (DAY_TIME_OFFSET or 0)
 		local frac = math.min(1, math.max(0, elapsed / total_day_ms))
 		local hour_angle = (3*pi/2) + frac * (3*pi/2)
@@ -2615,14 +2793,15 @@ while true do
 		Graphics.termBlend()
 		Graphics.initBlend(TOP_SCREEN)
 		if IS_STORY_MODE then
-			local total_day_ms = (DAYS_CONFIG[CURRENT_DAY] and DAYS_CONFIG[CURRENT_DAY].duration_sec or 180) * 1000
+			local day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
+			local total_day_ms = (day_cfg and day_cfg.duration_sec or 180) * 1000
 			local elapsed = Timer.getTime(GameTIME) + (DAY_TIME_OFFSET or 0)
 			TIME = total_day_ms - elapsed
 			if TIME <= 0 then
 				TIME = 0
 				DAY_OVER = true
 			end
-			plusPOINTS = 1
+			plusPOINTS = 5
 		elseif MODEselect==1 then 
 			TIME = 600000 - Timer.getTime(GameTIME) - TIMEMINUS
 			plusPOINTS = 1
@@ -2705,7 +2884,7 @@ while true do
 			elseif Options["TextAlign"]==0 then
 			GPU_DrawText(44,110,SCORE ,BROWN2,"l",400,SMALL_FONT,7)
 		end
-		GPU_DrawText(70,110,"+"..plusPOINTS,WHITE,"l",400,SMALL_FONT,7)
+		GPU_DrawText(70,110,"+"..plusPOINTS,HUD_GREEN_TEXT,"l",400,SMALL_FONT,7)
 		if Options["TextAlign"]==1 then
 			if string.len(PEOPLESCORE)==1 then
 				GPU_DrawText(65,215,"0"..PEOPLESCORE,BROWN3,"r",400,DIGITS,5)
@@ -2721,24 +2900,24 @@ while true do
 		end
 		if MINUSy<110 then
 			MINUSy=MINUSy+0.3
-			Graphics.fillRect(40,67,MINUSy-2,MINUSy+8,Color.new(63,0,255))
-			Graphics.fillEmptyRect(40,67,MINUSy-2,MINUSy+8,RED)
+			Graphics.fillRect(40,67,MINUSy-2,MINUSy+8,HUD_RED_BG)
+			Graphics.fillEmptyRect(40,67,MINUSy-2,MINUSy+8,HUD_RED_BORDER)
 			local m_text = "-" .. (LAST_MINUS_POINTS or 5)
 			if Options["TextAlign"]==1 then
-				GPU_DrawText(53,MINUSy,m_text ,RED,"c",400,SMALL_FONT,7)
+				GPU_DrawText(53,MINUSy,m_text ,HUD_RED_TEXT,"c",400,SMALL_FONT,7)
 				elseif Options["TextAlign"]==0 then
-				GPU_DrawText(44,MINUSy,m_text ,RED,"l",400,SMALL_FONT,7)
+				GPU_DrawText(44,MINUSy,m_text ,HUD_RED_TEXT,"l",400,SMALL_FONT,7)
 			end
 		end
 		if PLUSy<110 then
 			PLUSy=PLUSy+0.3
-			Graphics.fillRect(40,67,PLUSy-2,PLUSy+8,Color.new(63,0,255))
-			Graphics.fillEmptyRect(40,67,PLUSy-2,PLUSy+8,GREEN)
+			Graphics.fillRect(40,67,PLUSy-2,PLUSy+8,HUD_GREEN_BG)
+			Graphics.fillEmptyRect(40,67,PLUSy-2,PLUSy+8,HUD_GREEN_BORDER)
 			local p_text = "+" .. (LAST_PLUS_POINTS or plusPOINTS)
 			if Options["TextAlign"]==1 then
-				GPU_DrawText(53,PLUSy,p_text ,GREEN,"c",400,SMALL_FONT,7)
+				GPU_DrawText(53,PLUSy,p_text ,HUD_GREEN_TEXT,"c",400,SMALL_FONT,7)
 				elseif Options["TextAlign"]==0 then
-				GPU_DrawText(44,PLUSy,p_text ,GREEN,"l",400,SMALL_FONT,7)
+				GPU_DrawText(44,PLUSy,p_text ,HUD_GREEN_TEXT,"l",400,SMALL_FONT,7)
 			end
 		end
 		
@@ -2766,12 +2945,12 @@ while true do
 		end
 		if TIMEy<110 then
 			TIMEy=TIMEy+0.3
-			Graphics.fillRect(327,369,TIMEy-2,TIMEy+8,Color.new(63,0,255))
-			Graphics.fillEmptyRect(327,369,TIMEy-2,TIMEy+8,RED)
+			Graphics.fillRect(327,369,TIMEy-2,TIMEy+8,HUD_RED_BG)
+			Graphics.fillEmptyRect(327,369,TIMEy-2,TIMEy+8,HUD_RED_BORDER)
 			if Options["TextAlign"]==1 then
-				GPU_DrawText(347,TIMEy,"-00:30" ,RED,"c",400,SMALL_FONT,7)
+				GPU_DrawText(347,TIMEy,"-00:30" ,HUD_RED_TEXT,"c",400,SMALL_FONT,7)
 				elseif Options["TextAlign"]==0 then
-				GPU_DrawText(330,TIMEy,"-00:30" ,RED,"l",400,SMALL_FONT,7)
+				GPU_DrawText(330,TIMEy,"-00:30" ,HUD_RED_TEXT,"l",400,SMALL_FONT,7)
 			end
 		end
 		
@@ -2793,6 +2972,13 @@ while true do
 				if FADE_ALPHA >= 255 then
 					FADE_ALPHA = 255
 					FADE_STATE = "IN_TO_SUMMARY"
+					local day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
+					local expenses = (day_cfg and day_cfg.daily_expenses) or 20
+					if DAY_EXPENSES_DEDUCTED_DAY ~= CURRENT_DAY then
+						SCORE = SCORE - expenses
+						DAY_SUMMARY_EXPENSES = expenses
+						DAY_EXPENSES_DEDUCTED_DAY = CURRENT_DAY
+					end
 					menu = "DaySummary"
 				end
 			end
@@ -2971,39 +3157,78 @@ while true do
 		Graphics.termBlend()
 		TITLE_MOVE()
 		elseif menu=="DayIntro" then
-		local day_cfg = DAYS_CONFIG[CURRENT_DAY] or DAYS_CONFIG[1]
+		local day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
 
 		-- [LAZY-LOAD AUTHENTIC BULLETIN & NEWSPAPER TEXTURES]
 		if BULLETIN_BTM_TEX == nil then
 			BULLETIN_BTM_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_BULLETIN_BTM.png")
 		end
-		if NEWS_TEX == nil or NEWS_TEX_DAY ~= CURRENT_DAY then
-			if NEWS_TEX then Graphics.freeImage(NEWS_TEX) end
-			local n_day = CURRENT_DAY
-			if n_day < 1 or n_day > 4 then n_day = 1 end
-			local news_path = System.currentDirectory().."ASSETS/NEWS_DAY"..n_day..".png"
-			NEWS_TEX = Graphics.loadImage(news_path)
-			if NEWS_TEX == nil then
-				NEWS_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_BULLETIN_TOP.png")
+		if CURRENT_DAY <= 4 then
+			if NEWS_TEX == nil or NEWS_TEX_DAY ~= CURRENT_DAY then
+				if NEWS_TEX then Graphics.freeImage(NEWS_TEX) end
+				local news_path = System.currentDirectory().."ASSETS/NEWS_DAY"..CURRENT_DAY..".png"
+				NEWS_TEX = Graphics.loadImage(news_path)
+				if NEWS_TEX == nil then
+					NEWS_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_BULLETIN_TOP.png")
+				end
+				NEWS_TEX_DAY = CURRENT_DAY
 			end
-			NEWS_TEX_DAY = CURRENT_DAY
+		else
+			if NEWS_TEX then
+				Graphics.freeImage(NEWS_TEX)
+				NEWS_TEX = nil
+				NEWS_TEX_DAY = nil
+			end
 		end
 
-		-- [TOP SCREEN: AUTHENTIC NEWSPAPER - THE TRUTH OF ARSTOTZKA]
+		-- [TOP SCREEN: AUTHENTIC NEWSPAPER - THE TRUTH OF ARSTOTZKA / ARSTOTZKAN TRIBUNE]
 		Graphics.initBlend(TOP_SCREEN)
-		if NEWS_TEX then
+		if CURRENT_DAY <= 4 and NEWS_TEX then
 			Graphics.drawImage(0, 0, NEWS_TEX)
 		else
-			Graphics.fillRect(0, 400, 0, 240, Color.new(20, 20, 20))
-			Graphics.fillRect(15, 385, 12, 50, Color.new(215, 205, 190))
-			Graphics.fillEmptyRect(15, 385, 12, 50, Color.new(80, 70, 60))
-			GPU_DrawText(200, 16, "THE ARSTOTZKAN TRIBUNE", Color.new(20, 20, 20), "c", 400, NORMAL_FONT, 8)
-			GPU_DrawText(200, 32, "OFFICIAL NEWSPAPER - ISSUE #"..CURRENT_DAY.." - "..day_cfg.date, Color.new(80, 70, 60), "c", 400, SMALL_FONT, 7)
-			Graphics.fillRect(15, 385, 54, 228, Color.new(230, 222, 210))
-			Graphics.fillEmptyRect(15, 385, 54, 228, Color.new(100, 90, 80))
-			GPU_DrawText(25, 62, day_cfg.headline, Color.new(20, 20, 20), "l", 400, NORMAL_FONT, 8)
-			GPU_DrawText(25, 84, day_cfg.subline, Color.new(80, 60, 60), "l", 400, SMALL_FONT, 7)
-			GPU_DrawText(200, 190, "GLORY TO ARSTOTZKA.", Color.new(140, 25, 25), "c", 400, NORMAL_FONT, 8)
+			-- Procedural Newspaper: "THE ARSTOTZKAN TRIBUNE"
+			Graphics.fillRect(0, 400, 0, 240, Color.new(22, 19, 18))
+			-- Newspaper sheet background
+			Graphics.fillRect(12, 388, 10, 230, Color.new(228, 220, 206))
+			Graphics.fillEmptyRect(12, 388, 10, 230, Color.new(65, 55, 45))
+			Graphics.fillEmptyRect(14, 386, 12, 228, Color.new(140, 130, 115))
+
+			-- Newspaper Header Banner
+			Graphics.fillRect(16, 384, 14, 46, Color.new(45, 40, 38))
+			GPU_DrawText(200, 18, "THE ARSTOTZKAN TRIBUNE", Color.new(245, 240, 230), "c", 400, NORMAL_FONT, 8)
+			GPU_DrawText(200, 34, "THE VOICE OF THE MINISTRY  |  ISSUE #" .. CURRENT_DAY .. "  |  " .. day_cfg.date, Color.new(200, 190, 175), "c", 400, SMALL_FONT, 7)
+
+			-- Headline divider line
+			Graphics.fillRect(20, 380, 52, 54, Color.new(50, 40, 35))
+
+			-- Main Headline Box
+			GPU_DrawText(200, 62, day_cfg.headline, Color.new(20, 15, 15), "c", 400, NORMAL_FONT, 8)
+			GPU_DrawText(200, 80, day_cfg.subline, Color.new(70, 55, 50), "c", 400, SMALL_FONT, 7)
+
+			-- Separator
+			Graphics.fillRect(40, 360, 94, 95, Color.new(120, 110, 100))
+
+			-- Additional newspaper articles / flavor
+			if day_cfg.embargo_nation then
+				GPU_DrawText(25, 104, "DIPLOMATIC SANCTIONS IN EFFECT", Color.new(140, 30, 30), "l", 400, NORMAL_FONT, 8)
+				GPU_DrawText(25, 122, "Ministry of Foreign Affairs has suspended all entry privileges", Color.new(50, 40, 40), "l", 400, SMALL_FONT, 7)
+				GPU_DrawText(25, 136, "for citizens originating from " .. day_cfg.embargo_nation .. ".", Color.new(50, 40, 40), "l", 400, SMALL_FONT, 7)
+				GPU_DrawText(25, 150, "Inspectors must deny entry immediately under penalty of law.", Color.new(80, 50, 50), "l", 400, SMALL_FONT, 7)
+			else
+				GPU_DrawText(25, 104, "SECURITY PROTOCOLS UPDATED", Color.new(35, 30, 30), "l", 400, NORMAL_FONT, 8)
+				GPU_DrawText(25, 122, "State security agencies have increased checkpoint surveillance.", Color.new(50, 40, 40), "l", 400, SMALL_FONT, 7)
+				GPU_DrawText(25, 136, "Inspectors are reminded to verify all paperwork rigorously.", Color.new(50, 40, 40), "l", 400, SMALL_FONT, 7)
+				GPU_DrawText(25, 150, "Discrepancies in applicant statements will not be tolerated.", Color.new(80, 50, 50), "l", 400, SMALL_FONT, 7)
+			end
+
+			if day_cfg.wanted_name then
+				Graphics.fillRect(25, 375, 168, 196, Color.new(60, 20, 20))
+				Graphics.fillEmptyRect(25, 375, 168, 196, Color.new(120, 40, 40))
+				GPU_DrawText(200, 172, "WANTED BY STATE POLICE: " .. day_cfg.wanted_name, Color.new(255, 220, 220), "c", 400, SMALL_FONT, 7)
+				GPU_DrawText(200, 184, "DENY ENTRY IMMEDIATELY UPON PRESENTATION OF PAPERS", Color.new(240, 180, 180), "c", 400, SMALL_FONT, 7)
+			end
+
+			GPU_DrawText(200, 210, "GLORY TO ARSTOTZKA.", Color.new(140, 25, 25), "c", 400, NORMAL_FONT, 8)
 		end
 		screenshotmake()
 		Graphics.termBlend()
@@ -3032,13 +3257,17 @@ while true do
 		end
 		
 		-- Directives / Rules
-		local rule_y = 66
+		local rule_y = 64
 		for idx, rule in ipairs(day_cfg.bulletin_rules) do
 			if BULLETIN_BTM_TEX == nil then
 				Graphics.fillRect(20, 24, rule_y + 3, rule_y + 7, Color.new(82, 34, 34))
 			end
-			GPU_DrawText(28, rule_y, rule, Color.new(20, 20, 20), "l", 320, SMALL_FONT, 7)
-			rule_y = rule_y + 18
+			local rule_col = Color.new(20, 20, 20)
+			if string.find(rule, "DENY ALL") or string.find(rule, "WANTED") then
+				rule_col = Color.new(140, 25, 25)
+			end
+			GPU_DrawText(28, rule_y, rule, rule_col, "l", 320, SMALL_FONT, 7)
+			rule_y = rule_y + 16
 		end
 		
 		-- Shift info line
@@ -3284,6 +3513,8 @@ while true do
 				DAY_TIME_OFFSET = 0
 				WRONGMANn = 0
 				PEOPLESCORE = 0
+				DAY_EXPENSES_DEDUCTED_DAY = nil
+				DAY_SUMMARY_EXPENSES = nil
 				SCORE = DAY_START_SCORE or 0
 				SAVE_GAME({
 					day = CURRENT_DAY,
@@ -3300,6 +3531,8 @@ while true do
 				if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
 				if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
 				CLEAR_CITATIONS()
+				DAY_EXPENSES_DEDUCTED_DAY = nil
+				DAY_SUMMARY_EXPENSES = nil
 				SAVE_GAME({
 					day = CURRENT_DAY,
 					in_progress = 0,
@@ -3363,54 +3596,56 @@ while true do
 				Graphics.fillEmptyRect(15, 305, 12, 228, Color.new(100, 80, 60))
 			end
 			
-			GPU_DrawText(160, 54, "DAILY INSPECTION REPORT", Color.new(82, 34, 34), "c", 320, NORMAL_FONT, 8)
-			Graphics.fillRect(35, 285, 63, 65, Color.new(82, 34, 34))
+			GPU_DrawText(160, 52, "DAILY INSPECTION REPORT", Color.new(82, 34, 34), "c", 320, NORMAL_FONT, 8)
+			Graphics.fillRect(35, 285, 61, 63, Color.new(82, 34, 34))
 			
-			GPU_DrawText(35, 72, "ENTRANTS PROCESSED:", Color.new(40, 40, 40), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(280, 72, tostring(DAY_INSPECTED_COUNT), Color.new(20, 20, 20), "r", 320, NORMAL_FONT, 8)
+			GPU_DrawText(35, 68, "SALARY ("..DAY_CORRECT_COUNT.." APPROVED):", Color.new(40, 40, 40), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(280, 68, "+" .. tostring(DAY_CORRECT_COUNT * 5) .. " CREDITS", Color.new(20, 95, 20), "r", 320, NORMAL_FONT, 8)
 			
-			GPU_DrawText(35, 90, "CORRECT DECISIONS:", Color.new(25, 95, 25), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(280, 90, tostring(DAY_CORRECT_COUNT), Color.new(20, 95, 20), "r", 320, NORMAL_FONT, 8)
+			GPU_DrawText(35, 86, "CITATIONS / PENALTIES:", Color.new(180, 50, 50), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(280, 86, tostring(DAY_MISTAKES_COUNT), Color.new(180, 50, 50), "r", 320, NORMAL_FONT, 8)
 			
-			GPU_DrawText(35, 108, "CITATIONS / VIOLATIONS:", Color.new(180, 50, 50), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(280, 108, tostring(DAY_MISTAKES_COUNT), Color.new(180, 50, 50), "r", 320, NORMAL_FONT, 8)
+			GPU_DrawText(35, 104, "RENT & FOOD EXPENSES:", Color.new(140, 50, 50), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(280, 104, "-" .. tostring(DAY_SUMMARY_EXPENSES or 20) .. " CREDITS", Color.new(160, 40, 40), "r", 320, NORMAL_FONT, 8)
 			
-			GPU_DrawText(35, 126, "CURRENT BALANCE:", Color.new(40, 40, 40), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(280, 126, tostring(SCORE) .. " CREDITS", Color.new(20, 95, 20), "r", 320, NORMAL_FONT, 8)
+			GPU_DrawText(35, 124, "SAVINGS BALANCE:", Color.new(30, 30, 30), "l", 320, SMALL_FONT, 7)
+			GPU_DrawText(280, 124, tostring(SCORE) .. " CREDITS", Color.new(20, 95, 20), "r", 320, NORMAL_FONT, 8)
 			
 			DAY_NEXT_BTN = DAY_NEXT_BTN or {touched = false}
-			if CURRENT_DAY < #DAYS_CONFIG then
-				GPU_DrawText(160, 144, "DAY "..CURRENT_DAY.." COMPLETE!", Color.new(25, 100, 25), "c", 320, NORMAL_FONT, 8)
-				
-				if FADE_STATE == "NONE" and TOUCHx>=45 and TOUCHx<=275 and TOUCHy>=156 and TOUCHy<=184 then
-					Graphics.fillRect(45,275,156,184,Color.new(80,160,80))
-					DAY_NEXT_BTN.touched = true
-				else
-					Graphics.fillRect(45,275,156,184,Color.new(45,120,45))
-				end
-				Graphics.fillEmptyRect(45,275,156,184,Color.new(20,60,20))
-				GPU_DrawText(160, 168, "NEXT DAY (A)", WHITE, "c", 320, NORMAL_FONT, 8)
-				
-				if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_NEXT_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A))) then
-					DAY_NEXT_BTN.touched = false
-					if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
-					if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
-					CLEAR_CITATIONS()
-					CURRENT_DAY = CURRENT_DAY + 1
-					DAY_START_SCORE = SCORE
-					SAVE_GAME({
-						day = CURRENT_DAY,
-						in_progress = 0,
-						score = SCORE
-					})
-					DAY_TIME_OFFSET = 0
-					FADE_STATE = "NONE"
-					FADE_ALPHA = 0
-					menu = "DayIntro"
-				end
+			GPU_DrawText(160, 142, "DAY "..CURRENT_DAY.." COMPLETE!", Color.new(25, 100, 25), "c", 320, NORMAL_FONT, 8)
+			
+			if FADE_STATE == "NONE" and TOUCHx>=45 and TOUCHx<=275 and TOUCHy>=156 and TOUCHy<=184 then
+				Graphics.fillRect(45,275,156,184,Color.new(80,160,80))
+				DAY_NEXT_BTN.touched = true
 			else
-				GPU_DrawText(160, 142, "CAMPAIGN COMPLETE!", Color.new(180, 140, 20), "c", 320, NORMAL_FONT, 8)
-				GPU_DrawText(160, 160, "GLORY TO ARSTOTZKA!", Color.new(90, 36, 36), "c", 320, SMALL_FONT, 7)
+				Graphics.fillRect(45,275,156,184,Color.new(45,120,45))
+			end
+			Graphics.fillEmptyRect(45,275,156,184,Color.new(20,60,20))
+			GPU_DrawText(160, 168, "NEXT DAY (A)", WHITE, "c", 320, NORMAL_FONT, 8)
+			
+			if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_NEXT_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A))) then
+				DAY_NEXT_BTN.touched = false
+				if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
+				if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
+				CLEAR_CITATIONS()
+				CURRENT_DAY = CURRENT_DAY + 1
+				DAY_START_SCORE = SCORE
+				DAY_EXPENSES_DEDUCTED_DAY = nil
+				DAY_SUMMARY_EXPENSES = nil
+				DAY_INSPECTED_COUNT = 0
+				DAY_CORRECT_COUNT = 0
+				DAY_MISTAKES_COUNT = 0
+				DAY_TIME_OFFSET = 0
+				WRONGMANn = 0
+				PEOPLESCORE = 0
+				SAVE_GAME({
+					day = CURRENT_DAY,
+					in_progress = 0,
+					score = SCORE
+				})
+				FADE_STATE = "NONE"
+				FADE_ALPHA = 0
+				menu = "DayIntro"
 			end
 			
 			DAY_MENU_BTN = DAY_MENU_BTN or {touched = false}
@@ -3428,10 +3663,9 @@ while true do
 				if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
 				if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
 				local next_day = CURRENT_DAY + 1
-				if CURRENT_DAY >= #DAYS_CONFIG then
-					next_day = 1
-				end
 				DAY_START_SCORE = SCORE
+				DAY_EXPENSES_DEDUCTED_DAY = nil
+				DAY_SUMMARY_EXPENSES = nil
 				SAVE_GAME({
 					day = next_day,
 					in_progress = 0,

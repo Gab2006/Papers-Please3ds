@@ -53,15 +53,17 @@ Tested and optimized to run at a silky **60 FPS** on both original **Old 3DS / 2
 
 ## ✨ Key Features
 
-- 📖 **Story / Campaign Mode**: Progressive daily shifts with historical newspaper headlines (*The Truth of Arstotzka*), evolving geopolitical directives, and dynamic entry conditions (national bans, permit requirements, work authorizations).
+- 📖 **Infinite Story / Campaign Mode**: Progressive daily shifts starting with the historical 4-day tutorial (*The Truth of Arstotzka*), seamlessly transitioning into infinite procedural shifts (Day 5+) with escalating 3-tier complexity, rotating diplomatic embargoes, Most Wanted criminal lookout lists, and transcript cross-verifications.
+- 📰 **Procedural Newspaper Engine (*The Arstotzkan Tribune*)**: Dynamic typographic newspaper generation for Day 5+ on the Top Screen rendering real-time dates, national alert headlines, and Ministry directives with zero additional VRAM consumption.
 - 🖨️ **Realistic Ministry Citation System**:
   - **10-Second Suspense Delay**: Verdicts and errors are not revealed immediately; the player waits in tension as travelers depart.
   - **Stepped Dot-Matrix Print Feed**: Mechanical burst animations and sound effects as infraction slips emerge from the desk.
   - **Tiered Penalties**: First 2 errors act as warnings; 3rd error costs 5 credits; 4th+ errors deduct 10 credits.
-- 💸 **Economic Balancing & Debt Arrest Screen**:
+- 💸 **Economic Balancing, Subsistence Expenses & Debt Arrest**:
   - Earn 5 credits per valid passport cleared.
-  - Suffer penalties for infractions.
+  - Daily family subsistence expenses (Rent & Food: 20, 25, or 30 credits depending on tier) automatically deducted at 18:00.
   - Fall into negative balance (`SCORE < 0`) at shift end to trigger a somber Ministry Arrest dossier ending.
+  - Infinite career advancement: keep earning savings and advance across Day 5, 6, 7... N via `NEXT DAY (A)`.
 - 📂 **Multi-Document Verification**:
   - **8 National Passports**: Arstotzka, Antegria, Impor, Kolechia, Obristan, Republia, United Federation.
   - **Entry Permits**: Traveler names, ID codes, expiry dates, purpose, entry duration, and official MOA seals.
@@ -139,7 +141,7 @@ Procedural generation creates random discrepancies across 17 distinct violation 
 
 The game incorporates a custom low-level audio implementation designed around the Nintendo 3DS CSND hardware:
 * **Binary CSND Fix**: The compiled LPP-3DS `code.bin` executable is patched at offset `0xd1e4` to initialize `mem_size = 0` in non-streaming WAV handles, completely preventing memory corruptions, infinite loops, and static noise bursts.
-* **Anti-Clipping Calibration**: LPP-3DS mono playback forces maximum channel registers (`0xFFFFFFFF`), doubling sample amplitudes. All sound effects in `ASSETS/SOUND/` are normalized with a peak ceiling of 12,000 / 32,768 (-8.7 dBFS via [optimize_sounds.py](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/optimize_sounds.py)), providing pristine clarity and 8,000+ units of anti-clipping headroom.
+* **Anti-Clipping Calibration**: LPP-3DS mono playback forces maximum channel registers (`0xFFFFFFFF`), doubling sample amplitudes. All sound effects in `ASSETS/SOUND/` are normalized with a peak ceiling of 12,000 / 32,768 (-8.7 dBFS via `tools/optimize_sounds.py`), providing pristine clarity and 8,000+ units of anti-clipping headroom.
 * **On-Demand SFX Cache**: Sound handles are loaded lazily upon first trigger to prevent exhausting the 3DS OS file descriptor limit (`FOPEN_MAX`).
 
 ---
@@ -174,7 +176,7 @@ The project includes a fully automated build pipeline that compiles the Lua RomF
 * Nintendo 3DS SDK tools (bundled in `tools/` or installed in `C:\devkitPro\tools\bin\`):
   * `makerom.exe`
   * `3dstool.exe`
-  * `mkromfs3ds.exe` (optional, built-in IVFC RomFS generator included in `build.py`)
+  * `mkromfs3ds.exe` (optional, built-in IVFC RomFS generator included in `tools/build.py`)
 
 ### Compiling
 Run the one-click build script:
@@ -183,7 +185,7 @@ build.bat
 ```
 Or run the Python build script directly:
 ```bash
-python build.py
+python tools/build.py
 ```
 
 #### What `build.py` does automatically:
@@ -201,13 +203,19 @@ python build.py
 ├── index.lua                       # Core game logic, state machine, rendering & touch physics
 ├── DataFile.lua                    # Static game databases (DAYS_CONFIG, names, cities, rules)
 ├── FontInfo.lua                    # Custom bitmap glyph rendering engine (GPU_DrawText)
-├── build.bat                       # One-click Windows build script
-├── build.py                        # Automated CXI/CIA packaging & IVFC RomFS builder
-├── optimize_sounds.py              # Audio normalizer & WAV peak ceiling calibrator
-├── generate_papers_please_assets.py# Automated texture & graphic asset generator
-├── DESIGN_INFINITE_STORY.md        # Architecture specification for infinite campaign mode
+├── build.bat                       # One-click Windows build script (calls tools/build.py)
 ├── GEMINI.md                       # Comprehensive technical documentation & project memory
-├── tools/                          # 3DS binary tools (makerom, 3dstool, encryption keys)
+├── README.md                       # Project presentation & installation guide
+├── docs/                           # Architecture, design specifications & planning
+│   ├── DESIGN_INFINITE_STORY.md    # Infinite campaign mode architecture
+│   └── PLAN_INFINITE_STORY.md      # Implementation tasks and milestones
+├── tools/                          # Build pipeline, Python utility scripts & 3DS tools
+│   ├── build.py                    # Automated CXI/CIA packaging & IVFC RomFS builder
+│   ├── optimize_sounds.py          # Audio normalizer & WAV peak ceiling calibrator
+│   ├── generate_papers_please_assets.py # Automated texture & graphic asset generator
+│   ├── makerom.exe                 # 3DS CIA generation tool
+│   ├── 3dstool.exe                 # RomFS/ExeFS extraction and compression tool
+│   └── *.txt                       # Encryption keys & tool config
 └── ASSETS/                         # Textures, sprite sheets, bitmap fonts, and WAV sound effects
     ├── FONT/                       # Bitmap font sprite sheets
     ├── SOUND/                      # Calibrated 16-bit mono WAV sound effects
