@@ -2462,8 +2462,9 @@ function CHECK_EMPTYTABLE()
 		local has_wanted_violation = false
 		local has_transcript_violation = false
 
+		local day_cfg = nil
 		if IS_STORY_MODE then
-			local day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
+			day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
 			if day_cfg then
 				if day_cfg.embargo_nation and GET_NATION_NAME(PERSON.passport) == day_cfg.embargo_nation then
 					has_embargo_violation = true
@@ -2509,10 +2510,14 @@ function CHECK_EMPTYTABLE()
 			local penalty_time = 0
 			local mistake_count = IS_STORY_MODE and DAY_MISTAKES_COUNT or WRONGMANn
 			if IS_STORY_MODE then
-				if mistake_count <= 2 then
+				local max_warnings = (CURRENT_DAY and CURRENT_DAY >= 3) and 1 or 2
+				if day_cfg and day_cfg.allowed_warnings ~= nil then
+					max_warnings = day_cfg.allowed_warnings
+				end
+				if mistake_count <= max_warnings then
 					penalty_text = "WARNING - NO PENALTY"
 					penalty_pts = 0
-				elseif mistake_count == 3 then
+				elseif mistake_count == max_warnings + 1 then
 					penalty_text = "PENALTY: 5 CREDITS"
 					penalty_pts = 5
 				else
@@ -2576,10 +2581,14 @@ function CHECK_EMPTYTABLE()
 			local penalty_time = 0
 			local mistake_count = IS_STORY_MODE and DAY_MISTAKES_COUNT or WRONGMANn
 			if IS_STORY_MODE then
-				if mistake_count <= 2 then
+				local max_warnings = (CURRENT_DAY and CURRENT_DAY >= 3) and 1 or 2
+				if day_cfg and day_cfg.allowed_warnings ~= nil then
+					max_warnings = day_cfg.allowed_warnings
+				end
+				if mistake_count <= max_warnings then
 					penalty_text = "WARNING - NO PENALTY"
 					penalty_pts = 0
-				elseif mistake_count == 3 then
+				elseif mistake_count == max_warnings + 1 then
 					penalty_text = "PENALTY: 5 CREDITS"
 					penalty_pts = 5
 				else

@@ -288,6 +288,7 @@ DAYS_CONFIG = {
 		allow_foreigners = false,
 		require_permit   = false,
 		require_workpass = false,
+		allowed_warnings = 2,
 		daily_expenses   = 20,
 		duration_sec     = 180 -- 3 minuti reali (09:00 - 18:00)
 	},
@@ -303,6 +304,7 @@ DAYS_CONFIG = {
 		allow_foreigners = true,
 		require_permit   = false,
 		require_workpass = false,
+		allowed_warnings = 2,
 		daily_expenses   = 20,
 		duration_sec     = 180
 	},
@@ -318,6 +320,7 @@ DAYS_CONFIG = {
 		allow_foreigners = true,
 		require_permit   = true,
 		require_workpass = false,
+		allowed_warnings = 1,
 		daily_expenses   = 20,
 		duration_sec     = 180
 	},
@@ -333,6 +336,7 @@ DAYS_CONFIG = {
 		allow_foreigners = true,
 		require_permit   = true,
 		require_workpass = true,
+		allowed_warnings = 1,
 		daily_expenses   = 20,
 		duration_sec     = 180
 	}
@@ -346,6 +350,9 @@ function GET_DAY_CONFIG(day)
 		local cfg = DAYS_CONFIG[day]
 		if not cfg.daily_expenses then
 			cfg.daily_expenses = 20
+		end
+		if not cfg.allowed_warnings then
+			cfg.allowed_warnings = (day >= 3) and 1 or 2
 		end
 		return cfg
 	end
@@ -423,6 +430,7 @@ function GET_DAY_CONFIG(day)
 		embargo_nation   = embargo_nation,
 		wanted_name      = wanted_name,
 		daily_expenses   = daily_expenses,
+		allowed_warnings = 1,
 		duration_sec     = 180
 	}
 end
