@@ -31,8 +31,8 @@ MAKEROM_CANDIDATES = [
 APP_TITLE = "Papers, Please"
 APP_DESCRIPTION = "Papers, Please (3DS Demake)"
 APP_AUTHOR = "Gab2006"
-APP_VERSION_MAJOR = 0
-APP_VERSION_MINOR = 1
+APP_VERSION_MAJOR = 1
+APP_VERSION_MINOR = 0
 APP_VERSION_MICRO = 0
 APP_VERSION_RAW = ((APP_VERSION_MAJOR & 0x3F) << 10) | ((APP_VERSION_MINOR & 0x3F) << 4) | (APP_VERSION_MICRO & 0x0F)
 APP_VERSION_STRING = f"v{APP_VERSION_MAJOR}.{APP_VERSION_MINOR}.{APP_VERSION_MICRO}"
@@ -239,16 +239,20 @@ def update_cxi_metadata(cxi_path):
         smdh = bytearray(f.read(icon_sz))
 
         # Format metadata strings in UTF-16LE with null-termination padding
-        short_bytes = APP_TITLE.encode("utf-16le").ljust(64, b"\x00")[:64]
-        long_bytes = APP_DESCRIPTION.encode("utf-16le").ljust(128, b"\x00")[:128]
-        pub_bytes = APP_AUTHOR.encode("utf-16le").ljust(64, b"\x00")[:64]
+        # In 3DS SMDH, each title entry is 0x200 (512) bytes:
+        #   0x000..0x080: Short Title (128 bytes = 64 UTF-16 chars)
+        #   0x080..0x180: Long Title / Description (256 bytes = 128 UTF-16 chars)
+        #   0x180..0x200: Publisher / Author (128 bytes = 64 UTF-16 chars)
+        short_bytes = APP_TITLE.encode("utf-16le").ljust(0x80, b"\x00")[:0x80]
+        long_bytes = APP_DESCRIPTION.encode("utf-16le").ljust(0x100, b"\x00")[:0x100]
+        pub_bytes = APP_AUTHOR.encode("utf-16le").ljust(0x80, b"\x00")[:0x80]
 
         # Populate all 16 languages (Japanese, English, French, German, Italian, Spanish, etc.)
         for lang in range(16):
             entry_off = 8 + lang * 0x200
-            smdh[entry_off : entry_off + 64] = short_bytes
-            smdh[entry_off + 64 : entry_off + 64 + 128] = long_bytes
-            smdh[entry_off + 64 + 128 : entry_off + 64 + 128 + 64] = pub_bytes
+            smdh[entry_off : entry_off + 0x80] = short_bytes
+            smdh[entry_off + 0x80 : entry_off + 0x180] = long_bytes
+            smdh[entry_off + 0x180 : entry_off + 0x200] = pub_bytes
 
         # Write updated SMDH back to ExeFS
         f.seek(exefs_off + 512 + icon_off)
@@ -261,65 +265,14 @@ def update_cxi_metadata(cxi_path):
         f.write(exefs_hdr)
 
         # Update ExeFS super hash in NCCH header
+        # NOTE: Do NOT touch ncch_hdr[0x112:0x114] (NCCH format version) — that field
+        # must remain 2 (NCCH2 format). The application version is set via makerom flags.
         ncch_hdr[0x1C0:0x1E0] = hashlib.sha256(exefs_hdr).digest()
-
-        # Update NCCH Version (offset 0x112: 16-bit unsigned integer, little-endian)
-        ncch_hdr[0x112:0x114] = struct.pack("<H", APP_VERSION_RAW)
 
         f.seek(0)
         f.write(ncch_hdr)
 
     print(f"  + CXI metadata updated: Title='{APP_TITLE}', Publisher='{APP_AUTHOR}', Version={APP_VERSION_STRING}")
-    return bytes(smdh)
-
-def postprocess_cia_metadata(cia_path, smdh_bytes):
-    """
-    Patches the generated CIA file:
-    1. Sets ticketVersion in Ticket to APP_VERSION_RAW (v0.1.0)
-    2. Sets titleVersion in TMD to APP_VERSION_RAW (v0.1.0)
-    3. Replaces corrupted/encrypted Meta SMDH with clean unencrypted SMDH
-    """
-    if not os.path.exists(cia_path):
-        return
-
-    with open(cia_path, "r+b") as f:
-        hdr = f.read(0x20)
-        hdr_sz, cia_type, cia_ver, cert_sz, ticket_sz, tmd_sz, meta_sz, content_sz = struct.unpack("<IHHIIIIQ", hdr)
-
-        def align64(x):
-            return (x + 63) & ~63
-
-        cert_off = align64(hdr_sz)
-        ticket_off = align64(cert_off + cert_sz)
-        tmd_off = align64(ticket_off + ticket_sz)
-        meta_off = align64(tmd_off + tmd_sz)
-
-        tid_bytes = bytes.fromhex("0004000000facd00")
-
-        # 1. Update Ticket version (offset tid_pos + 10 in Ticket)
-        f.seek(ticket_off)
-        tik_data = bytearray(f.read(ticket_sz))
-        tik_tid_pos = tik_data.find(tid_bytes)
-        if tik_tid_pos != -1:
-            tik_data[tik_tid_pos + 10 : tik_tid_pos + 12] = struct.pack(">H", APP_VERSION_RAW)
-            f.seek(ticket_off)
-            f.write(tik_data)
-
-        # 2. Update TMD titleVersion (offset tid_pos + 80 in TMD)
-        f.seek(tmd_off)
-        tmd_data = bytearray(f.read(tmd_sz))
-        tmd_tid_pos = tmd_data.find(tid_bytes)
-        if tmd_tid_pos != -1:
-            tmd_data[tmd_tid_pos + 80 : tmd_tid_pos + 82] = struct.pack(">H", APP_VERSION_RAW)
-            f.seek(tmd_off)
-            f.write(tmd_data)
-
-        # 3. Inject clean, unencrypted SMDH into CIA Meta
-        if smdh_bytes and meta_sz >= 1024 + len(smdh_bytes):
-            f.seek(meta_off + 1024)
-            f.write(smdh_bytes)
-
-    print(f"  + CIA metadata successfully injected: Version={APP_VERSION_STRING}, Author='{APP_AUTHOR}'")
 
 def build():
     print("=" * 60)
@@ -405,8 +358,8 @@ def build():
         f.write(exefs_and_body)
         f.write(new_romfs_data)
 
-    # Update metadata in CXI (SMDH, ExeFS hashes, NCCH version)
-    smdh_bytes = update_cxi_metadata(CXI_FILE)
+    # Update metadata in CXI (SMDH with Title, Author, Description, and ExeFS hashes)
+    update_cxi_metadata(CXI_FILE)
 
     print(f"  + CXI built successfully: {CXI_FILE} ({os.path.getsize(CXI_FILE):,} bytes)")
 
@@ -437,8 +390,6 @@ def build():
             if os.path.exists(CIA_FILE):
                 os.remove(CIA_FILE)
             shutil.move(temp_cia, CIA_FILE)
-            # Post-process CIA: set version in Ticket/TMD and inject clean SMDH into Meta
-            postprocess_cia_metadata(CIA_FILE, smdh_bytes)
             print(f"  + CIA built successfully: {CIA_FILE} ({os.path.getsize(CIA_FILE):,} bytes)")
         else:
             print("  [ERROR] makerom did not produce CIA output:")
