@@ -122,6 +122,12 @@ Procedural generation creates random discrepancies across 17 distinct violation 
 * Identity fraud (face mismatch between passport, ID card, and traveler).
 * Discrepancies in declared height or weight vs. biometric card data.
 
+### Arcade Modes
+Three standalone arcade modes offer replayable challenges outside the narrative campaign:
+* **Time Mode**: Race against a 10-minute shift clock. Each mistake from the 3rd infraction onward deducts 30 seconds from the timer. Survive until time runs out.
+* **Perfect Mode**: Zero tolerance — a single infraction triggers immediate dismissal. One mistake and the shift ends.
+* **Score Mode**: Maximize your credit balance with no daily narrative limits. Penalties apply from the 3rd mistake (−5 credits) and escalate from the 4th onward (−10 credits).
+
 ---
 
 ## 🕹️ Controls
