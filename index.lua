@@ -1268,7 +1268,7 @@ function TOUCH_CHECK(word,key)
 			word.velocity = word.velocity or 0
 			word.gravity = word.gravity or 0
 
-			-- Se sporge dal bordo inferiore del bancone: slide verso quota ripiano y = 23 (come passaporto e carta d'identita')
+			-- If protruding from lower counter edge: slide towards shelf height y = 23 (like passport and ID card)
 			if word.y <= 23 then
 				word.gravity = 0
 				word.velocity = 0

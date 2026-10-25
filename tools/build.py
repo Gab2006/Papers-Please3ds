@@ -404,9 +404,9 @@ def build():
     cleanup()
 
     print("=" * 60)
-    print("BUILD COMPLETATA CON SUCCESSO!")
-    print(f"  1. Emulatore (Citra / Lime3DS): 'Papers Please.cxi'")
-    print(f"  2. Console Nintendo 3DS (FBI):   'Papers Please.cia'")
+    print("BUILD COMPLETED SUCCESSFULLY!")
+    print(f"  1. Emulator (Citra / Lime3DS):  'Papers Please.cxi'")
+    print(f"  2. Nintendo 3DS Console (FBI):   'Papers Please.cia'")
     print("=" * 60)
 
 def cleanup():

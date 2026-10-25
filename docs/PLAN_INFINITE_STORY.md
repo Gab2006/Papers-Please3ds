@@ -1,94 +1,93 @@
-# Piano di Implementazione: Modalità Storia Infinita
+# Implementation Plan: Infinite Story Mode
 > **Target**: Nintendo 3DS (Lua Player Plus - LPP-3DS)  
-> **Documento di riferimento**: [DESIGN_INFINITE_STORY.md](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/DESIGN_INFINITE_STORY.md)  
-> **Stato**: Completato e Validato
+> **Reference Document**: [DESIGN_INFINITE_STORY.md](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/docs/DESIGN_INFINITE_STORY.md)  
+> **Status**: Completed and Validated
 
 ---
 
-## 1. Mappa dei File Coinvolti
+## 1. File Map
 
-| File | Responsabilità | Modifiche Previste |
+| File | Responsibility | Planned Changes |
 |---|---|---|
-| [DataFile.lua](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/DataFile.lua) | Database e configurazione giornate | Implementazione di `GET_DAY_CONFIG(day)`, pool frasi transcript, estensione tabella errori `WRONGTABLE`. |
-| [index.lua](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/index.lua) | Gameloop, ispezione e rendering | Sostituzione accessi statici con `GET_DAY_CONFIG()`, controlli embargo/ricercati in `CHECK_EMPTYTABLE()`, spese in `DaySummary`, rimozione blocco Giorno 4. |
-| [GEMINI.md](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/GEMINI.md) | Memoria architetturale del progetto | Aggiornamento documentazione con le nuove regole doganali e modello a scaglioni. |
+| [DataFile.lua](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/DataFile.lua) | Databases and day configuration | Implementation of `GET_DAY_CONFIG(day)`, transcript phrase pool, error table expansion in `WRONGTABLE`. |
+| [index.lua](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/index.lua) | Gameloop, inspection, and rendering | Replace static lookups with `GET_DAY_CONFIG()`, embargo/wanted checks in `CHECK_EMPTYTABLE()`, expenses in `DaySummary`, removal of Day 4 cap. |
+| [GEMINI.md](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/GEMINI.md) | Architectural project memory | Update documentation with new border rules and tiered difficulty model. |
 
 ---
 
-## 2. Fasi di Implementazione Sequenziali
+## 2. Sequential Implementation Phases
 
-### Fase 1: Motore Procedurale e Database (`DataFile.lua`)
-- [x] **1.1. Funzione `GET_DAY_CONFIG(day)`**:
-  - Mantenere i Giorni 1–4 instradati su `DAYS_CONFIG[day]` (tutorial storico).
-  - Per `day >= 5`, generare determinata matematicamente dal numero del giorno (`day`):
-    - Data progressiva (a partire da `27.11.1982`).
-    - Scaglione di difficoltà (Tier 1: 5–8, Tier 2: 9–15, Tier 3: 16+).
-    - Spese di sussistenza giornaliere (`daily_expenses`: 20, 25 o 30 crediti).
-    - Eventuale nazione sotto embargo diplomatico (`embargo_nation`).
-    - Eventuale criminale ricercato (`wanted_name`).
-    - Titoli di giornale e direttive burocratiche per il bollettino.
-- [x] **1.2. Estensione Motivi di Sanzione**:
-  - Mappare nuove motivazioni formali per le citazioni MOA:
-    - `"VIOLATION OF DIPLOMATIC SANCTIONS"` (approvazione nazione in embargo).
-    - `"WANTED FUGITIVE ADMITTED"` (approvazione fuggitivo segnalato).
-    - `"ENTRY PERMIT DURATION MISMATCH"` (discrepanza tra transcript e permesso).
-- [x] **1.3. Pool Frasi Transcript**:
-  - Introdurre risposte del viaggiatore relative alla durata del soggiorno (*"Visiting for 2 days"*, *"Stay for 14 days"*, *"Transit only"*, *"Here for employment"*).
-
----
-
-### Fase 2: Generazione Dinamica Viaggiatore (`RANDOMIZE()` in `index.lua`)
-- [x] **2.1. Switch a `GET_DAY_CONFIG()`**:
-  - Sostituire ogni istanza di `DAYS_CONFIG[CURRENT_DAY]` con `GET_DAY_CONFIG(CURRENT_DAY)`.
-- [x] **2.2. Spawn Condizionale del Ricercato**:
-  - Se `day_cfg.wanted_name` è presente, assegnare al 20–25% dei viaggiatori il nome del criminale segnalato nel bollettino.
-- [x] **2.3. Generazione Discrepanze nel Transcript**:
-  - Sincronizzare le battute del dialogo `CHAT` con i documenti generati:
-    - Impostare casi corretti (es. dichiara 14 giorni ed Entry Permit riporta 14 giorni).
-    - Impostare casi con discrepanza (es. dichiara 30 giorni ma il permesso segna 2 giorni, o dichiara "lavoro" senza Work Pass).
+### Phase 1: Procedural Engine & Database (`DataFile.lua`)
+- [x] **1.1. `GET_DAY_CONFIG(day)` Function**:
+  - Keep Days 1–4 routed through `DAYS_CONFIG[day]` (historical tutorial).
+  - For `day >= 5`, generate mathematically from day number (`day`):
+    - Progressive calendar date (starting from `27.11.1982`).
+    - Difficulty tier (Tier 1: 5–8, Tier 2: 9–15, Tier 3: 16+).
+    - Daily subsistence living costs (`daily_expenses`: 20, 25, or 30 credits).
+    - Optional nation under diplomatic embargo (`embargo_nation`).
+    - Optional wanted fugitive profile (`wanted_name`).
+    - Newspaper headlines and bureaucratic directives for the morning bulletin.
+- [x] **1.2. Infraction Reason Extension**:
+  - Map new formal reasons for MOA citations:
+    - `"VIOLATION OF DIPLOMATIC SANCTIONS"` (clearing citizens of an embargoed nation).
+    - `"WANTED FUGITIVE ADMITTED"` (clearing a listed fugitive).
+    - `"ENTRY PERMIT DURATION MISMATCH"` (discrepancy between transcript statement and permit).
+- [x] **1.3. Transcript Phrase Pool**:
+  - Introduce entrant verbal responses regarding duration of stay (*"Visiting for 2 days"*, *"Stay for 14 days"*, *"Transit only"*, *"Here for employment"*).
 
 ---
 
-### Fase 3: Logica di Ispezione (`CHECK_EMPTYTABLE()` in `index.lua`)
-- [x] **3.1. Rilevamento Violazione Embargo**:
-  - Se `day_cfg.embargo_nation` è attivo e il viaggiatore proviene da quella nazione (`PERSON.passport`), approvare con timbro verde scatena una citazione per violazione sanzioni. Respingere è la decisione corretta.
-- [x] **3.2. Rilevamento Fuggitivo Ricercato**:
-  - Se il nome del viaggiatore corrisponde a `day_cfg.wanted_name` e riceve approvazione, emettere citazione ministeriale per mancato arresto/diniego.
-- [x] **3.3. Rilevamento Incongruenze Transcript**:
-  - Verificare che lo scopo dichiarato coincida con i permessi e che la durata verbale coincida con l'Entry Permit. In caso di discrepanza, l'approvazione genera citazione.
+## Phase 2: Dynamic Entrant Generation (`RANDOMIZE()` in `index.lua`)
+- [x] **2.1. Switch to `GET_DAY_CONFIG()`**:
+  - Replace every occurrence of `DAYS_CONFIG[CURRENT_DAY]` with `GET_DAY_CONFIG(CURRENT_DAY)`.
+- [x] **2.2. Conditional Wanted Fugitive Spawn**:
+  - If `day_cfg.wanted_name` is present, assign the flagged criminal name to 20–25% of entrants.
+- [x] **2.3. Transcript Discrepancy Generation**:
+  - Synchronize dialogue lines `CHAT` with generated documents:
+    - Set matching cases (e.g., states 14 days and Entry Permit specifies 14 days).
+    - Set discrepant cases (e.g., states 30 days while permit says 2 days, or claims "employment" without a Work Pass).
 
 ---
 
-### Fase 4: Bilancio Economico e Ciclo di Fine Turno (`DaySummary` in `index.lua`)
-- [x] **4.1. Calcolo Spese di Sussistenza Familiari**:
-  - Alle ore 18:00, dedurre le spese giornaliere:
+## Phase 3: Inspection Logic (`CHECK_EMPTYTABLE()` in `index.lua`)
+- [x] **3.1. Embargo Violation Detection**:
+  - If `day_cfg.embargo_nation` is active and entrant originates from that nation (`PERSON.passport`), approving with the green stamp triggers an MOA citation for sanctions violation. Denying is the correct verdict.
+- [x] **3.2. Wanted Fugitive Detection**:
+  - If entrant name matches `day_cfg.wanted_name` and receives approval, dispatch an MOA citation for admitting a fugitive.
+- [x] **3.3. Transcript Discrepancy Detection**:
+  - Verify stated visit purpose matches paperwork and verbal duration matches Entry Permit. If discrepant, approval triggers a citation.
+
+---
+
+## Phase 4: Economic Balance & Shift-End Cycle (`DaySummary` in `index.lua`)
+- [x] **4.1. Family Subsistence Expenses Calculation**:
+  - At 18:00, deduct daily living costs:
     `SCORE = SCORE - (day_cfg.daily_expenses or 20)`.
-- [x] **4.2. Aggiornamento Layout Scheda di Riepilogo**:
-  - Mostrare nel foglio pergamena (Bottom Screen):
-    - *Stipendio Ispezioni*: `+X CREDITS` (`DAY_CORRECT_COUNT * 5`).
-    - *Spese di Sussistenza (Affitto/Cibo)*: `-Y CREDITS`.
-    - *Saldo Risparmi Netto*: `SCORE CREDITS`.
-- [x] **4.3. Avanzamento Infinito `NEXT DAY (A)`**:
-  - Rimuovere la condizione limitante `if CURRENT_DAY < #DAYS_CONFIG`.
-  - Permettere a `NEXT DAY (A)` di incrementare `CURRENT_DAY = CURRENT_DAY + 1` e salvare lo stato su scheda SD indefinitamente.
-- [x] **4.4. Schermata Cupa di Debito / Game Over**:
-  - Se `SCORE < 0`, mantenere attiva la schermata cupa ministeriale per insolvenza economica con pulsante `RETRY DAY (A)` per ritentare il turno ripartendo da `DAY_START_SCORE`.
+- [x] **4.2. Daily Report Layout Update**:
+  - Display on the ledger parchment sheet (Bottom Screen):
+    - *Inspection Salary*: `+X CREDITS` (`DAY_CORRECT_COUNT * 5`).
+    - *Subsistence Expenses (Rent/Food)*: `-Y CREDITS`.
+    - *Net Account Balance*: `SCORE CREDITS`.
+- [x] **4.3. Infinite Advancement `NEXT DAY (A)`**:
+  - Remove the limiting check `if CURRENT_DAY < #DAYS_CONFIG`.
+  - Allow `NEXT DAY (A)` to increment `CURRENT_DAY = CURRENT_DAY + 1` and save state to SD card indefinitely.
+- [x] **4.4. Somber Ministry Debt Arrest / Game Over**:
+  - If `SCORE < 0`, maintain the somber Ministry debt dossier screen with a `RETRY DAY (A)` button to replay the shift starting from `DAY_START_SCORE`.
 
 ---
 
-### Fase 5: Rendering Procedurale Quotidiano e Bollettino (`menu == "DayIntro"`)
-- [x] **5.1. Top Screen (Quotidiano Tipografico oltre il Giorno 4)**:
-  - Per `CURRENT_DAY <= 4`: continuare a usare le texture esistenti `NEWS_DAY1.png` .. `NEWS_DAY4.png`.
-  - Per `CURRENT_DAY >= 5`: utilizzare il renderer procedurale tipografico (`THE ARSTOTZKAN TRIBUNE`) visualizzando data storica, titolo embargo/sicurezza e sottotitolo generati da `GET_DAY_CONFIG()`, preservando la VRAM del 3DS.
-- [x] **5.2. Bottom Screen (Direttive MOA)**:
-  - Formattare dinamicamente le direttive del bollettino, evidenziando chiaramente nazioni sotto embargo e nomi dei ricercati.
+## Phase 5: Procedural Newspaper & Bulletin Rendering (`menu == "DayIntro"`)
+- [x] **5.1. Top Screen (Typographic Newspaper beyond Day 4)**:
+  - For `CURRENT_DAY <= 4`: continue using existing graphic textures `NEWS_DAY1.png` .. `NEWS_DAY4.png`.
+  - For `CURRENT_DAY >= 5`: utilize the procedural typographic renderer (`THE ARSTOTZKAN TRIBUNE`) displaying historical date, embargo/security headline, and subtitle generated by `GET_DAY_CONFIG()`, preserving 3DS VRAM.
+- [x] **5.2. Bottom Screen (MOA Directives)**:
+  - Dynamically format bulletin directives, clearly highlighting embargoed nations and wanted criminal names.
 
 ---
 
-### Fase 6: Protocollo di Test e Validazione
-- [x] **Test 1**: Eseguire i Giorni 1–4 e verificare che rimangano identici all'esperienza originale.
-- [x] **Test 2**: Completare il Giorno 4 e verificare che il gioco non si fermi su "CAMPAIGN COMPLETE", ma proponga `NEXT DAY (A)` portando al Giorno 5.
-- [x] **Test 3**: Nel Giorno 5+, verificare la corretta comparsa nel bollettino delle nuove direttive e testare l'emissione delle citazioni per embargo, ricercato e transcript.
-- [x] **Test 4**: Verificare che a fine turno vengano dedotte le spese di sussistenza e che un saldo negativo scateni fedelmente l'arresto ministeriale per debito.
-- [x] **Test 5**: Verificare la stabilità dei 60 FPS e l'assenza di memory leak o picchi di Garbage Collection su Old 3DS.
-
+## Phase 6: Testing & Validation Protocol
+- [x] **Test 1**: Play Days 1–4 to verify they remain faithful to the original demake experience.
+- [x] **Test 2**: Complete Day 4 and ensure the game does not halt on "CAMPAIGN COMPLETE", but offers `NEXT DAY (A)` advancing to Day 5.
+- [x] **Test 3**: On Day 5+, verify correct morning bulletin directives and confirm citations fire for embargo, wanted fugitive, and transcript mismatches.
+- [x] **Test 4**: Verify subsistence expenses are deducted at shift end and a negative balance triggers the somber debt arrest sequence.
+- [x] **Test 5**: Confirm stable 60 FPS performance without memory leaks or Garbage Collection hitches on Old 3DS hardware.

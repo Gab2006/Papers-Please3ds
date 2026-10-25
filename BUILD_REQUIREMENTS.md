@@ -1,53 +1,53 @@
-# Requisiti di Build — Papers, Please 3DS
+# Build Requirements — Papers, Please 3DS
 
-Questa guida descrive tutti i prerequisiti software e di sistema necessari per compilare ed effettuare il packaging di **Papers, Please 3DS** nei formati `.cxi` (per emulatore) e `.cia` (per console reale).
+This guide details all software and system prerequisites required to build and package **Papers, Please 3DS** into `.cxi` (for emulators) and `.cia` (for physical consoles) formats.
 
 ---
 
-## 1. Ambiente Python
+## 1. Python Environment
 
-- **Python**: Versione 3.8 o superiore (testato con Python 3.10+ / 3.13)
-- **Librerie Python**:
-  Installabili tramite il file [`requirements.txt`](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/requirements.txt):
+- **Python**: Version 3.8 or higher (tested with Python 3.10+ / 3.13)
+- **Python Libraries**:
+  Installable via [`requirements.txt`](requirements.txt):
   ```bash
   pip install -r requirements.txt
   ```
-  - `Pillow` (richiesto da [`tools/generate_papers_please_assets.py`](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/tools/generate_papers_please_assets.py) per la generazione procedurale degli asset grafici e dei quotidiani).
-  - Lo script principale di build ([`tools/build.py`](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/tools/build.py)) e lo script audio ([`tools/optimize_sounds.py`](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/tools/optimize_sounds.py)) utilizzano esclusivamente moduli della Standard Library di Python (`os`, `sys`, `struct`, `hashlib`, `shutil`, `subprocess`, `wave`).
+  - `Pillow` (required by [`tools/generate_papers_please_assets.py`](tools/generate_papers_please_assets.py) for procedural generation of graphic assets and newspapers).
+  - The main build script ([`tools/build.py`](tools/build.py)) and audio optimization script ([`tools/optimize_sounds.py`](tools/optimize_sounds.py)) use only Python Standard Library modules (`os`, `sys`, `struct`, `hashlib`, `shutil`, `subprocess`, `wave`).
 
 ---
 
-## 2. Toolchain Nintendo 3DS
+## 2. Nintendo 3DS Toolchain
 
-Per completare il packaging RomFS, CXI e CIA sono necessari i seguenti binari:
+To complete the RomFS, CXI, and CIA packaging, the following binaries are required:
 
-| Tool | Scopo | Dove si trova |
+| Tool | Purpose | Location |
 |---|---|---|
-| `mkromfs3ds.exe` | Compressione del filesystem RomFS di livello 3 | `C:\devkitPro\tools\bin\mkromfs3ds.exe` (installato con devkitPro) |
-| `makerom.exe` | Packaging del file `.cia` finale | Incluso in [`tools/makerom.exe`](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/tools/makerom.exe) o in `devkitPro` |
-| `3dstool.exe` | Compressione/decompressione BLZ per la patch `code.bin` | Incluso in [`tools/3dstool.exe`](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/tools/3dstool.exe) |
+| `mkromfs3ds.exe` | Compresses Level 3 RomFS filesystem | `C:\devkitPro\tools\bin\mkromfs3ds.exe` (installed with devkitPro) |
+| `makerom.exe` | Packages final `.cia` file | Included in [`tools/makerom.exe`](tools/makerom.exe) or in `devkitPro` |
+| `3dstool.exe` | BLZ compression/decompression for the `code.bin` patch | Included in [`tools/3dstool.exe`](tools/3dstool.exe) |
 
 > [!NOTE]
-> `makerom.exe` e `3dstool.exe` sono già inclusi nella cartella [`tools/`](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/tools/).
-> L'unico tool esterno di sistema richiesto per il build completo è **devkitPro** (specificamente `mkromfs3ds.exe` situato nel percorso predefinito `C:\devkitPro\tools\bin\mkromfs3ds.exe`).
+> `makerom.exe` and `3dstool.exe` are already included in the [`tools/`](tools/) folder.
+> The only external system tool required for the complete build is **devkitPro** (specifically `mkromfs3ds.exe` located at the default path `C:\devkitPro\tools\bin\mkromfs3ds.exe`).
 
 ---
 
-## 3. Esecuzione della Build
+## 3. Running the Build
 
-Una volta soddisfatti i requisiti:
+Once requirements are met:
 
-### Su Windows (One-Click)
-Fai doppio clic o esegui da prompt:
+### On Windows (One-Click)
+Double-click or run from command prompt:
 ```bat
 build.bat
 ```
 
-### Da riga di comando (qualsiasi terminale)
+### From Command Line (any terminal)
 ```bash
 python tools/build.py
 ```
 
-I file generati saranno disponibili nella root del progetto:
-- [`Papers Please.cxi`](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/Papers%20Please.cxi) (Emulatore Citra / Lime3DS)
-- [`Papers Please.cia`](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/Papers%20Please.cia) (Console Nintendo 3DS con FBI / Luma3DS)
+The generated files will be available in the project root:
+- [`Papers Please.cxi`](Papers%20Please.cxi) (Citra / Lime3DS Emulator)
+- [`Papers Please.cia`](Papers%20Please.cia) (Nintendo 3DS Console via FBI / Luma3DS)

@@ -1,68 +1,68 @@
-# Specifiche di Design: Modalità Storia Infinita & Escalation di Complessità
+# Design Specifications: Infinite Story Mode & Complexity Escalation
 > **Papers, Please: 3DS Homebrew Demake**  
-> Data di validazione: Ottobre 2026
+> Validation Date: October 2026
 
 ---
 
 ## 1. Understanding Summary
 
-* **Cosa stiamo creando**: Un motore procedurale di **Giornate Infinite (Day 5, 6... N)** per la Modalità Storia/Campagna, dotato di una progressione continua di difficoltà, nuove direttive geopolitiche, liste di ricercati, controlli incrociati sul transcript e un bilancio economico giornaliero con spese di sussistenza.
-* **Perché esiste**: Attualmente la modalità storia termina al Giorno 4 con la scritta "CAMPAIGN COMPLETE!". Questo sistema rende la carriera dell'ispettore doganale virtualmente illimitata e progressivamente più complessa, riproducendo la profondità gestionale e la tensione burocratica dell'opera originale.
-* **A chi è rivolto**: Giocatori di *Papers, Please* su Nintendo 3DS / 2DS / New 3DS tramite homebrew Lua Player Plus (LPP-3DS).
-* **Meccaniche Chiave**:
-  1. **Generatore Procedurale di Giornata (`GET_DAY_CONFIG`)**: Sostituisce la tabella statica per `day >= 5`, calcolando data, headline, regole del bollettino, embargo e ricercati in modo deterministico.
-  2. **Embargo Geopolitico a Rotazione**: Divieti diplomatici temporanei che ordinano il respingimento categorico dei cittadini di una specifica nazione straniera.
-  3. **Lista 'Most Wanted' (Ricercati Ministeriali)**: Profili segnalati nel bollettino MOA del mattino con obbligo di diniego per evitare gravi sanzioni.
-  4. **Verifica Incrociata nel Transcript**: Controllo di concordanza tra le dichiarazioni del viaggiatore (scopo e durata della visita) e i documenti esibiti (Entry Permit / Work Pass).
-  5. **Bilancio di Sussistenza Familiare**: Detrazione di spese fisse a fine turno (Affitto, Cibo, Riscaldamento) per prevenire l'accumulo passivo di crediti e mantenere viva la minaccia dell'arresto per debito (`SCORE < 0`).
-* **Vincoli Tecnici Principali**:
-  * Limiti di memoria VRAM su Old 3DS: nessun asset PNG aggiuntivo caricato per i singoli giorni infiniti; utilizzo del rendering tipografico procedurale per quotidiano e bollettino.
-  * Compatibilità totale con il file di salvataggio su SD (`sdmc:/3ds/papersplease_save.dat`).
-  * Esecuzione a 60 FPS senza allocazioni massive o garbage collection improvvise durante il turno.
-* **Non-Obiettivi**:
-  * Trama ramificata con finali multipli dell'Ordine EZIC (il focus è la simulazione doganale infinita).
-  * Nuovi accessori touch fisici (scanner a raggi X o scanner impronte digitali).
+* **What we are creating**: A procedural engine for **Infinite Days (Day 5, 6... N)** for the Story/Campaign Mode, featuring continuous difficulty progression, new geopolitical directives, Most Wanted criminal lists, transcript cross-verification, and a daily economic balance sheet with family subsistence expenses.
+* **Why it exists**: Previously, Story Mode ended at Day 4 with a "CAMPAIGN COMPLETE!" notice. This system makes the border inspector career virtually limitless and progressively more demanding, faithfully reproducing the managerial depth and bureaucratic tension of the original game.
+* **Target Audience**: Players of *Papers, Please* on Nintendo 3DS / 2DS / New 3DS via the Lua Player Plus (LPP-3DS) homebrew environment.
+* **Key Mechanics**:
+  1. **Procedural Day Generator (`GET_DAY_CONFIG`)**: Replaces the static table for `day >= 5`, calculating date, headline, bulletin rules, embargoes, and wanted fugitives deterministically.
+  2. **Rotating Geopolitical Embargo**: Temporary diplomatic bans ordering the categorical denial of citizens from a specific foreign nation.
+  3. **'Most Wanted' Fugitive List**: High-profile criminals flagged in the morning MOA bulletin that must be denied to prevent severe infractions.
+  4. **Transcript Cross-Verification**: Matching checks between traveler verbal statements (visit purpose and duration) and submitted documents (Entry Permit / Work Pass).
+  5. **Family Subsistence Balance**: End-of-shift deductions for fixed living costs (Rent, Food, Heating) to prevent passive credit hoarding and maintain the threat of debt arrest (`SCORE < 0`).
+* **Core Technical Constraints**:
+  * VRAM limits on Old 3DS: no additional PNG assets loaded for individual infinite days; uses procedural typographic rendering for newspapers and bulletins.
+  * Full compatibility with the SD card save format (`sdmc:/3ds/papersplease_save.dat`).
+  * Steady 60 FPS execution without massive allocations or sudden garbage collection spikes mid-shift.
+* **Non-Goals**:
+  * Branching story paths with multiple EZIC Order endings (the focus is infinite border simulation).
+  * New physical touch accessories (X-ray scanner or biometric fingerprint scanner).
 
 ---
 
-## 2. Assunzioni e Parametri di Progressione
+## 2. Assumptions & Progression Parameters
 
-1. **Continuità Canonica (Giorni 1–4)**:
-   * I primi 4 giorni restano intatti come tutorial storico (utilizzando i file grafici `NEWS_DAY1.png` .. `NEWS_DAY4.png` e le direttive statiche).
-2. **Escalation a Scaglioni (Tier System)**:
-   * **Tier 1 (Giorni 5–8)**: Bassa tensione. Spese di sussistenza = **20 crediti**. Compare la prima incongruenza nel transcript o un embargo occasionale.
-   * **Tier 2 (Giorni 9–15)**: Media tensione. Spese di sussistenza = **25 crediti**. Si attiva la lista *Most Wanted* (1 ricercato segnalato) e controlli documentali rigorosi.
-   * **Tier 3 (Giorni 16+)**: Massima allerta. Spese di sussistenza = **30 crediti**. Fino a 2 restrizioni simultanee attive (embargo + ricercato + tutti i documenti obbligatori).
-3. **Determinismo del Giorno**:
-   * La configurazione del giorno `N` (data, titolo, regole, ricercato, embargo) è determinata dal seed locale del giorno (`day`), garantendo che riavviando il turno (*RETRY DAY*) lo scenario rimanga identico.
-4. **Tariffa Ispezioni vs Spese**:
-   * Guadagno per ispezione corretta: **+5 crediti**.
-   * Con spese tra 20 e 30 crediti, l'ufficiale deve completare con successo almeno **4–6 ispezioni pulite** a turno per non finire in perdita.
+1. **Canonical Continuity (Days 1–4)**:
+   * The first 4 days remain untouched as historical tutorials (using static graphic assets `NEWS_DAY1.png` .. `NEWS_DAY4.png` and fixed directives).
+2. **Tier-Based Escalation System**:
+   * **Tier 1 (Days 5–8)**: Low tension. Subsistence expenses = **20 credits**. Introduces occasional transcript discrepancies or diplomatic embargoes.
+   * **Tier 2 (Days 9–15)**: Moderate tension. Subsistence expenses = **25 credits**. Activates the *Most Wanted* list (1 flagged fugitive) and strict document verification.
+   * **Tier 3 (Days 16+)**: High alert. Subsistence expenses = **30 credits**. Up to 2 concurrent restrictions active (embargo + wanted fugitive + all documents required).
+3. **Day Determinism**:
+   * Configuration for day `N` (date, headline, rules, wanted criminal, embargo) is derived from the day number seed (`day`), ensuring that replaying the shift (*RETRY DAY*) yields the identical scenario.
+4. **Inspection Rates vs. Expenses**:
+   * Earning per correct clearance: **+5 credits**.
+   * With expenses between 20 and 30 credits, the inspector must successfully clear at least **4–6 clean inspections** per shift to break even.
 
 ---
 
-## 3. Decision Log (Registro delle Decisioni)
+## 3. Decision Log
 
-| Decisione | Opzioni Considerate | Motivazione della Scelta |
+| Decision | Options Considered | Rationale |
 |---|---|---|
-| **Architettura Infinita** | Giornate procedurali (Day 5..N) vs 31 giorni fissi vs New Game+ ciclico | Raggiunge rigiocabilità infinita immediata con impatto zero sulla memoria VRAM del Nintendo 3DS. |
-| **Vettori di Complessità** | Embargo + Most Wanted + Transcript vs Nuovi documenti fisici | Approfondisce le verifiche mentali e sfrutta gli asset esistenti senza affollare eccessivamente il piccolo touchscreen (320x240). |
-| **Economia di Sussistenza** | Spese vive a fine turno (Affitto/Cibo) vs Solo sanzioni per errori | Introduce una reale pressione temporale: lavorare lentamente porta all'arresto per insolvenza anche senza commettere errori. |
-| **Rendering Quotidiani 5+** | Layout tipografico procedurale Top Screen vs Generazione continua file PNG | Prestazioni perfette a 60 FPS e zero deallocazioni/frammentazione memoria heap su Old 3DS. |
+| **Infinite Architecture** | Procedural shifts (Day 5..N) vs 31 fixed days vs cyclic New Game+ | Provides immediate infinite replayability with zero impact on Nintendo 3DS VRAM. |
+| **Complexity Vectors** | Embargo + Most Wanted + Transcript vs New physical documents | Deepens mental verification and leverages existing assets without cluttering the small touchscreen (320x240). |
+| **Subsistence Economy** | End-of-shift living costs (Rent/Food) vs mistake penalties only | Introduces genuine time pressure: working too slowly leads to debt arrest even without committing errors. |
+| **Day 5+ Newspaper Rendering** | Procedural typography on Top Screen vs continuous PNG generation | Rock-solid 60 FPS performance and zero heap memory fragmentation on Old 3DS. |
 
 ---
 
-## 4. Specifiche Tecniche e Architetturali
+## 4. Technical & Architectural Specifications
 
-### 4.1. Funzione `GET_DAY_CONFIG(day)`
-Sostituisce gli accessi a `DAYS_CONFIG[CURRENT_DAY]`:
+### 4.1. `GET_DAY_CONFIG(day)` Function
+Replaces direct lookups into `DAYS_CONFIG[CURRENT_DAY]`:
 ```lua
 function GET_DAY_CONFIG(day)
     if day <= 4 and DAYS_CONFIG and DAYS_CONFIG[day] then
         return DAYS_CONFIG[day]
     end
 
-    -- Generatore Deterministico Giorni 5+
+    -- Deterministic Generator for Days 5+
     local tier = 1
     local daily_expenses = 20
     if day >= 16 then
@@ -73,14 +73,14 @@ function GET_DAY_CONFIG(day)
         daily_expenses = 25
     end
 
-    -- Calcolo Data (base: 27.11.1982)
+    -- Date Calculation (base: 27.11.1982)
     local offset = day - 5
     local d_day = 27 + (offset % 30)
     local d_month = 11 + math.floor((27 + offset) / 30) % 12
     local d_year = 1982 + math.floor(offset / 365)
     local date_str = string.format("%02d.%02d.%04d", d_day, d_month, d_year)
 
-    -- Determinazione Regole Speciali (Embargo & Most Wanted)
+    -- Special Rule Determination (Embargo & Most Wanted)
     local prng = (day * 1103515245 + 12345) % 2147483648
     local embargo_nation = nil
     local wanted_name = nil
@@ -122,44 +122,44 @@ function GET_DAY_CONFIG(day)
 end
 ```
 
-### 4.2. Logica di Ispezione in `CHECK_EMPTYTABLE()`
-Quando un viaggiatore riceve il timbro APPROVED (Verde):
-1. **Verifica Embargo**: Se `day_cfg.embargo_nation` corrisponde alla nazione del passaporto (`PERSON.passport` mappato al nome nazione), la decisione è errata:
-   * Errore: `"VIOLATION OF DIPLOMATIC SANCTIONS"`.
-2. **Verifica Ricercato (Most Wanted)**: Se il nome completo del viaggiatore corrisponde a `day_cfg.wanted_name`, la decisione è errata:
-   * Errore: `"WANTED FUGITIVE ADMITTED"`.
-3. **Verifica Transcript (Durata e Scopo)**: Se la durata dichiarata a voce differisce dalla stringa `ENTRYPERMIT.duration`, o se lo scopo è lavorativo senza `WORKPASS`, la decisione è errata:
-   * Errore: `"ENTRY PERMIT DURATION MISMATCH"`.
+### 4.2. Inspection Logic in `CHECK_EMPTYTABLE()`
+When a traveler receives an APPROVED (Green) stamp:
+1. **Embargo Check**: If `day_cfg.embargo_nation` matches the passport nation (`PERSON.passport` mapped to nation name), the decision is an infraction:
+   * Infraction: `"VIOLATION OF DIPLOMATIC SANCTIONS"`.
+2. **Most Wanted Check**: If the full name of the traveler matches `day_cfg.wanted_name`, the decision is an infraction:
+   * Infraction: `"WANTED FUGITIVE ADMITTED"`.
+3. **Transcript Check (Duration and Purpose)**: If the stated verbal duration contradicts `ENTRYPERMIT.duration`, or if visit purpose is employment without a valid `WORKPASS`, the decision is an infraction:
+   * Infraction: `"ENTRY PERMIT DURATION MISMATCH"`.
 
-### 4.3. Calcolo Finanziario in `menu == "DaySummary"`
-1. A fine giornata (18:00):
+### 4.3. Financial Calculation in `menu == "DaySummary"`
+1. At end of shift (18:00):
    ```lua
    local day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
    local expenses = day_cfg.daily_expenses or 20
    SCORE = SCORE - expenses
    ```
-2. Rendering del riepilogo su Bottom Screen:
-   * Entrate: `"+" .. tostring(DAY_CORRECT_COUNT * 5) .. " CREDITS"`
-   * Spese Famiglia (Affitto, Cibo): `"-" .. tostring(expenses) .. " CREDITS"`
-   * Saldo Risparmi: `tostring(SCORE) .. " CREDITS"`
-3. Pulsante **NEXT DAY (A)**:
-   * Sempre disponibile se `SCORE >= 0`.
-   * Incrementa `CURRENT_DAY = CURRENT_DAY + 1` e salva il nuovo giorno su SD (`sdmc:/3ds/papersplease_save.dat`).
-4. Pulsante **RETRY DAY (A)**:
-   * Attivo se `SCORE < 0` (schermata di debito/arresto).
-   * Ripristina `SCORE = DAY_START_SCORE` e ricarica il giorno corrente con le stesse regole.
+2. Rendering report on Bottom Screen:
+   * Income: `"+" .. tostring(DAY_CORRECT_COUNT * 5) .. " CREDITS"`
+   * Family Expenses (Rent, Food): `"-" .. tostring(expenses) .. " CREDITS"`
+   * Total Savings Balance: `tostring(SCORE) .. " CREDITS"`
+3. **NEXT DAY (A)** Button:
+   * Always available when `SCORE >= 0`.
+   * Increments `CURRENT_DAY = CURRENT_DAY + 1` and saves to SD card (`sdmc:/3ds/papersplease_save.dat`).
+4. **RETRY DAY (A)** Button:
+   * Enabled when `SCORE < 0` (debt arrest screen).
+   * Restores `SCORE = DAY_START_SCORE` and reloads current day with identical rules.
 
 ---
 
-## 5. Piano di Validazione e Test
+## 5. Validation & Test Plan
 
-1. **Verifica Retrocompatibilità (Giorni 1–4)**:
-   * Avviare la campagna dal Giorno 1 e verificare che i primi 4 giorni mantengano i quotidiani grafici e le regole originali.
-2. **Transizione Giorno 4 -> Giorno 5**:
-   * Completare il Giorno 4 e verificare che il pulsante mostri correttamente `NEXT DAY (A)` anziché bloccare il gioco su "CAMPAIGN COMPLETE!".
-3. **Rendering Procedurale del Giornale (Giorno 5+)**:
-   * Verificare che il Top Screen mostri l'intestazione tipografica, data calcolata, titolo e sottotitolo corretti senza crash di texture.
-4. **Ispezione Embargo & Ricercati**:
-   * Approvare un viaggiatore della nazione in embargo o il criminale segnalato nel bollettino per verificare l'emissione della citazione e la detrazione della multa dopo 10 secondi.
-5. **Bilancio Spese & Arresto per Insolvenza**:
-   * Terminare un turno processando 0 persone o subendo multe per testare l'attivazione della schermata cupa di arresto ministeriale per insolvenza economica.
+1. **Backwards Compatibility Check (Days 1–4)**:
+   * Launch campaign from Day 1 and verify that the first 4 days retain historical newspapers and rules.
+2. **Transition Day 4 -> Day 5**:
+   * Complete Day 4 and confirm that the interface offers `NEXT DAY (A)` instead of halting on "CAMPAIGN COMPLETE!".
+3. **Procedural Newspaper Rendering (Day 5+)**:
+   * Ensure Top Screen properly displays typographic mastheads, calculated calendar dates, dynamic headlines, and subtitles without texture issues.
+4. **Embargo & Wanted Criminal Inspection**:
+   * Approve an entrant from an embargoed nation or the listed fugitive to confirm that an MOA citation is dispatched and fine deducted after 10 seconds.
+5. **Subsistence Expenses & Debt Arrest**:
+   * End shift processing 0 entrants or incurring heavy fines to confirm triggering the somber Ministry debt arrest dossier screen.

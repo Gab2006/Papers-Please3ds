@@ -1,28 +1,27 @@
-# Piano Operativo di Implementazione: Ottimizzazione Fluidità 60 FPS
+# Operational Implementation Plan: 60 FPS Fluidity Optimization
 
-## Roadmap delle Fasi
+## Phase Roadmap
 
-- [x] **Fase 1: Ottimizzazione del Motore di Rendering Testo (`FontInfo.lua`)**
-  - [x] Implementare `GPU_MeasureText(text, size)` per il calcolo statico immediato della larghezza in pixel.
-  - [x] Estendere `GPU_DrawText()` per accettare `precomputed_w`: eliminazione del primo ciclo di scansione per testi centrati (`"c"`) e allineati a destra (`"r"`).
-  - [x] Garantire retrocompatibilità 100% per le chiamate prive del parametro opzionale.
+- [x] **Phase 1: Text Rendering Engine Optimization (`FontInfo.lua`)**
+  - [x] Implement `GPU_MeasureText(text, size)` for fast static pixel width calculations.
+  - [x] Extend `GPU_DrawText()` to accept `precomputed_w`: eliminating the initial scan pass for centered (`"c"`) and right-aligned (`"r"`) text.
+  - [x] Guarantee 100% backwards compatibility for invocations without the optional width argument.
 
-- [x] **Fase 2: Creazione del Sottosistema Descrittori Statici (`index.lua`)**
-  - [x] Implementare `BUILD_DOC_TEXT_CACHE()` per pre-generare e normalizzare tutti i testi anagrafici del viaggiatore in `RANDOMIZE()`.
-  - [x] Configurare i campi per tutti gli 8 layout di passaporto (`PERSON.passport == 1..8`).
-  - [x] Configurare i campi per `ENTRYPERMIT`, `IDCARD` e `WORKPASS`.
-  - [x] Configurare la cache dinamica per `TRANSCRIPT` (dialoghi) e `CITATIONS` (citazioni MOA).
+- [x] **Phase 2: Static Descriptor Subsystem Creation (`index.lua`)**
+  - [x] Implement `BUILD_DOC_TEXT_CACHE()` to precompute and normalize entrant paperwork text fields during `RANDOMIZE()`.
+  - [x] Configure descriptor fields for all 8 passport layouts (`PERSON.passport == 1..8`).
+  - [x] Configure descriptor fields for `ENTRYPERMIT`, `IDCARD`, and `WORKPASS`.
+  - [x] Configure dynamic descriptor caching for `TRANSCRIPT` dialogues and `CITATIONS` (MOA slips).
 
-- [x] **Fase 3: Refactoring di `LOAD_TEXT()` e Counter Occlusion Culling**
-  - [x] Riscrivere `LOAD_TEXT(key)` per iterare sui descrittori pre-compilati senza allocare stringhe né chiamare `string.upper()`.
-  - [x] Inserire il filtro di scarto ripiano: `if actual_y >= 65 and actual_y <= 240`.
-  - [x] Preservare il rendering delle fototessere e del timbro doganale (`YES` / `NO`).
+- [x] **Phase 3: Refactoring of `LOAD_TEXT()` & Counter Occlusion Culling**
+  - [x] Rewrite `LOAD_TEXT(key)` to iterate over pre-compiled descriptors without heap string allocations or `string.upper()` calls.
+  - [x] Implement shelf occlusion culling: `if actual_y >= 65 and actual_y <= 240`.
+  - [x] Preserve rendering of biometric ID photos and border clearance stamps (`YES` / `NO`).
 
-- [x] **Fase 4: Ottimizzazione Lookup Oggetti e Loop Main**
-  - [x] Creare la mappa O(1) `ITEM_BY_KEY` per eliminare i loop nidificati su `ALLITEMS`.
-  - [x] Ottimizzare la cadenza dell'animazione del cassetto timbri in `STAMP_CODE()`.
+- [x] **Phase 4: Item Lookup Optimization & Main Loop**
+  - [x] Introduce O(1) table `ITEM_BY_KEY` to eliminate nested linear iterations over `ALLITEMS`.
+  - [x] Optimize stamp drawer animation timing in `STAMP_CODE()`.
 
-- [x] **Fase 5: Build, Validazione e Rilascio Pacchetti**
-  - [x] Rebuild completo di `Papers Please.cxi` e `Papers Please.cia`.
-  - [x] Verifica assenza di regressioni o anomalie visive.
-
+- [x] **Phase 5: Build, Validation & Package Release**
+  - [x] Full rebuild of `Papers Please.cxi` and `Papers Please.cia`.
+  - [x] Validate zero visual regressions, stutter-free dragging, and 60 FPS fluidity.

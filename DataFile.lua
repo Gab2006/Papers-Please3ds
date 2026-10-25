@@ -290,7 +290,7 @@ DAYS_CONFIG = {
 		require_workpass = false,
 		allowed_warnings = 2,
 		daily_expenses   = 20,
-		duration_sec     = 180 -- 3 minuti reali (09:00 - 18:00)
+		duration_sec     = 180 -- 3 real minutes (09:00 - 18:00)
 	},
 	[2] = {
 		date = "24.11.1982",

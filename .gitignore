@@ -1,9 +1,9 @@
 # ==========================================
 # Papers, Please 3DS - .gitignore
-# File e cartelle non necessari al repository
+# Files and directories excluded from repository
 # ==========================================
 
-# Pacchetti ROM compilati, eseguibili e file binari 3DS
+# Compiled ROM packages, executables, and 3DS binary files
 *.cxi
 *.cia
 *.3ds
@@ -12,14 +12,14 @@
 *.smdh
 *.bin
 
-# File e cartelle temporanee del processo di build
+# Temporary files and directories from build process
 _build_staging/
 _temp.romfs
 _temp_code.bin
 _temp_comp.bin
 _pack_temp.cia
 
-# File sorgente grafici e progetti di editing (non usati a runtime)
+# Source graphics files and editing projects (not used at runtime)
 *.psd
 *.ase
 *.aseprite
@@ -27,14 +27,14 @@ _pack_temp.cia
 *.ai
 *.svg
 
-# Archivi e file compressi
+# Archives and compressed files
 *.zip
 *.7z
 *.rar
 *.tar
 *.tar.gz
 
-# Python bytecode e ambienti virtuali
+# Python bytecode and virtual environments
 __pycache__/
 *.py[cod]
 *$py.class
@@ -42,7 +42,7 @@ __pycache__/
 venv/
 env/
 
-# File scratch, bozze e temporanei
+# Scratch files, drafts, and temporary files
 scratch_*
 scratch/
 *.tmp
@@ -53,7 +53,7 @@ scratch/
 *~
 *.orig
 
-# Screenshot, log e crash dump
+# Screenshots, logs, and crash dumps
 *.bmp
 screenshots/
 *.log
@@ -61,11 +61,11 @@ screenshots/
 *.crash
 *.dump
 
-# File di salvataggio del gioco
+# Game save files
 *.dat
 papersplease_save.dat
 
-# Configurazione agenti AI, assistenti e toolchain locale
+# AI agents configuration, assistants, and local toolchains
 .agents/
 .gemini/
 .claude/
@@ -76,14 +76,14 @@ skills-lock.json
 GEMINI.md
 
 
-# Configurazioni IDE ed editor
+# IDE and editor configurations
 .vscode/
 .idea/
 .vs/
 *.sublime-project
 *.sublime-workspace
 
-# File di sistema operativo (Windows, macOS, Linux)
+# Operating system files (Windows, macOS, Linux)
 Thumbs.db
 Thumbs.db:encryptable
 ehthumbs.db

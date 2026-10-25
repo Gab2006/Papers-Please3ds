@@ -27,13 +27,13 @@ def generate_all():
     C_INK_MID        = (125, 120, 112)    # Newsprint dither text
     C_INK_LIGHT      = (188, 182, 172)    # Faint watermark & guidelines
     
-    # MUTED SOVIET RED (Spento!)
+    # MUTED SOVIET RED (Muted/dull)
     C_RED_DARK       = (52, 20, 20)       # Muted shadow
     C_RED_BANNER     = (82, 34, 34)       # Muted, dull, drab Soviet oxblood/burgundy
     C_RED_LIGHT      = (108, 48, 48)      # Muted highlight
     C_RED_STAMP_MUTE = (115, 48, 48)      # Faded vintage ink stamp for newspaper
     
-    # OFFICIAL STAMP RED (Tranne per il rosso del timbro!)
+    # OFFICIAL STAMP RED (Except for stamp red!)
     C_STAMP_PINK     = (245, 115, 115)    # Authentic official MOA stamp
     C_GOLD_TEXT      = (205, 195, 160)    # Sub-text on banner
     
@@ -178,7 +178,7 @@ def generate_all():
     d_btm.rectangle([(10, 8), (309, 229)], outline=C_INK_DARK)
     d_btm.rectangle([(12, 10), (307, 227)], outline=C_PAPER_BORDER)
     
-    # Top Muted Header Banner (y=11..44) - SPENTO!
+    # Top Muted Header Banner (y=11..44) - MUTED!
     d_btm.rectangle([(13, 11), (306, 44)], fill=C_RED_BANNER)
     d_btm.line([(13, 11), (306, 11)], fill=C_RED_LIGHT)
     d_btm.line([(13, 44), (306, 44)], fill=C_RED_DARK)
@@ -204,7 +204,7 @@ def generate_all():
     for by in [69, 87, 105, 123]:
         d_btm.rectangle([(20, by), (23, by + 3)], fill=C_RED_BANNER)
         
-    # Circular Ministry seal stamp on bottom-right of sheet (TRANNE PER IL ROSSO DEL TIMBRO!)
+    # Circular Ministry seal stamp on bottom-right of sheet (EXCEPT FOR STAMP RED!)
     draw_seal(d_btm, 260, 148, radius=20, color=C_STAMP_PINK)
     
     # Divider above the action area
@@ -448,7 +448,7 @@ def generate_all():
         d_sum_top.point((wx, 108), fill=(160, 160, 160))
         d_sum_top.point((wx + 2, 110), fill=(160, 160, 160))
         
-    # Muted crimson header banner (spento!)
+    # Muted crimson header banner (muted!)
     d_sum_top.rectangle([(20, 14), (380, 44)], fill=C_RED_BANNER)
     d_sum_top.rectangle([(20, 14), (380, 44)], outline=C_RED_DARK)
     d_sum_top.rectangle([(22, 16), (378, 42)], outline=C_RED_LIGHT)
@@ -472,7 +472,7 @@ def generate_all():
     d_sum_btm.rectangle([(14, 10), (305, 231)], fill=C_PAPER_BG)
     d_sum_btm.rectangle([(14, 10), (305, 231)], outline=C_INK_DARK)
     d_sum_btm.rectangle([(16, 12), (303, 229)], outline=C_PAPER_BORDER)
-    # Muted header banner (spento!)
+    # Muted header banner (muted!)
     d_sum_btm.rectangle([(17, 13), (302, 46)], fill=C_RED_BANNER)
     d_sum_btm.line([(17, 13), (302, 13)], fill=C_RED_LIGHT)
     d_sum_btm.line([(17, 46), (302, 46)], fill=C_RED_DARK)
@@ -483,7 +483,7 @@ def generate_all():
     d_sum_btm.line([(24, 56), (296, 56)], fill=C_INK_DARK)
     for ly in [84, 104, 124]:
         d_sum_btm.line([(24, ly + 14), (296, ly + 14)], fill=C_PAPER_SHADE)
-    # Circular stamp (tranne per il rosso del timbro!)
+    # Circular stamp (except for stamp red!)
     draw_seal(d_sum_btm, 260, 114, radius=20, color=C_STAMP_PINK)
     
     sum_btm_path = os.path.join(ASSETS_DIR, 'BKG_DAYSUMMARY.png')
