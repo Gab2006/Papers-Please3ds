@@ -73,6 +73,8 @@ papersplease_save.dat
 .chat/
 .history/
 skills-lock.json
+GEMINI.md
+
 
 # Configurazioni IDE ed editor
 .vscode/
