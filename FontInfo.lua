@@ -191,110 +191,88 @@ do
 end
 
 function GPU_DrawText(x, y, text, font_color, option, text_screen, font, size)
+	if text == nil then return end
+	if type(text) ~= "string" then
+		text = tostring(text)
+	end
 	-- Early-out: entire text row is off-screen vertically
 	if y > 240 or y < -size then return end
 	-- Early-out: text starts to the right of the target screen
 	if x >= text_screen then return end
-	if option=="l" then
-	-- [PERF] Use string.byte for zero-alloc glyph indexing
-	local text_u
-	if size==7 then
-		text_u = text
-	elseif size==8 then
-		text_u = string.upper(text)
-	elseif size==5 then
-		text_u = text
-	end
+
+	local text_u = (size == 8) and string.upper(text) or text
 	local str_length = #text_u
-	local str_width = 0
+	if str_length == 0 then return end
+
 	local gl_l, gl_w
-	if size==7 then gl_l=GL_L2; gl_w=GL_W2
-	elseif size==8 then gl_l=GL_L; gl_w=GL_W
-	elseif size==5 then gl_l=GL_L3; gl_w=GL_W3
+	if size == 7 then
+		gl_l = GL_L2
+		gl_w = GL_W2
+	elseif size == 8 then
+		gl_l = GL_L
+		gl_w = GL_W
+	elseif size == 5 then
+		gl_l = GL_L3
+		gl_w = GL_W3
+	else
+		return
 	end
-	for i_str = 1, str_length do
-		local b = string.byte(text_u, i_str)
-		local cw = gl_w[b]
-		if cw ~= nil then
-			local px = x + str_width
-			if px > -5 and px < text_screen then
-				Graphics.drawPartialImage(px, y, gl_l[b], 0, cw, size, font, font_color)
+
+	if option == "l" then
+		local str_width = 0
+		for i_str = 1, str_length do
+			local b = string.byte(text_u, i_str)
+			local cw = gl_w[b]
+			if cw ~= nil then
+				local px = x + str_width
+				if px > -5 and px < text_screen then
+					Graphics.drawPartialImage(px, y, gl_l[b], 0, cw, size, font, font_color)
+				end
+				str_width = str_width + cw + 1
 			end
-			str_width = str_width + cw + 1
 		end
-	end
-	elseif option=="r" then
-	-- [PERF] Use string.byte for zero-alloc glyph indexing
-	local text_u
-	if size==7 then
-		text_u = text
-	elseif size==8 then
-		text_u = string.upper(text)
-	elseif size==5 then
-		text_u = text
-	end
-	local str_length = #text_u
-	local gl_l, gl_w
-	if size==7 then gl_l=GL_L2; gl_w=GL_W2
-	elseif size==8 then gl_l=GL_L; gl_w=GL_W
-	elseif size==5 then gl_l=GL_L3; gl_w=GL_W3
-	end
-	-- First pass: measure total width
-	local total_w = 0
-	for i_str = 1, str_length do
-		local b = string.byte(text_u, i_str)
-		local cw = gl_w[b]
-		if cw ~= nil then total_w = total_w + cw + 1 end
-	end
-	-- Second pass: draw right-aligned
-	local str_width = 0
-	for i_str = 1, str_length do
-		local b = string.byte(text_u, i_str)
-		local cw = gl_w[b]
-		if cw ~= nil then
-			local px = x - total_w + str_width
-			if px > -5 and px < text_screen then
-				Graphics.drawPartialImage(px, y, gl_l[b], 0, cw, size, font, font_color)
+	elseif option == "r" then
+		-- First pass: measure total width
+		local total_w = 0
+		for i_str = 1, str_length do
+			local b = string.byte(text_u, i_str)
+			local cw = gl_w[b]
+			if cw ~= nil then total_w = total_w + cw + 1 end
+		end
+		-- Second pass: draw right-aligned
+		local str_width = 0
+		for i_str = 1, str_length do
+			local b = string.byte(text_u, i_str)
+			local cw = gl_w[b]
+			if cw ~= nil then
+				local px = x - total_w + str_width
+				if px > -5 and px < text_screen then
+					Graphics.drawPartialImage(px, y, gl_l[b], 0, cw, size, font, font_color)
+				end
+				str_width = str_width + cw + 1
 			end
-			str_width = str_width + cw + 1
 		end
-	end
-	elseif option=="c" then
-	-- [PERF] Use string.byte for zero-alloc glyph indexing
-	local text_u
-	if size==7 then
-		text_u = text
-	elseif size==8 then
-		text_u = string.upper(text)
-	elseif size==5 then
-		text_u = text
-	end
-	local str_length = #text_u
-	local gl_l, gl_w
-	if size==7 then gl_l=GL_L2; gl_w=GL_W2
-	elseif size==8 then gl_l=GL_L; gl_w=GL_W
-	elseif size==5 then gl_l=GL_L3; gl_w=GL_W3
-	end
-	-- First pass: measure total width
-	local total_w = 0
-	for i_str = 1, str_length do
-		local b = string.byte(text_u, i_str)
-		local cw = gl_w[b]
-		if cw ~= nil then total_w = total_w + cw + 1 end
-	end
-	-- Second pass: draw centered
-	local half_center = math.floor(total_w / 2)
-	local str_width = 0
-	for i_str = 1, str_length do
-		local b = string.byte(text_u, i_str)
-		local cw = gl_w[b]
-		if cw ~= nil then
-			local px = x - half_center + str_width
-			if px > -5 and px < text_screen then
-				Graphics.drawPartialImage(px, y, gl_l[b], 0, cw, size, font, font_color)
+	elseif option == "c" then
+		-- First pass: measure total width
+		local total_w = 0
+		for i_str = 1, str_length do
+			local b = string.byte(text_u, i_str)
+			local cw = gl_w[b]
+			if cw ~= nil then total_w = total_w + cw + 1 end
+		end
+		-- Second pass: draw centered
+		local half_center = math.floor(total_w / 2)
+		local str_width = 0
+		for i_str = 1, str_length do
+			local b = string.byte(text_u, i_str)
+			local cw = gl_w[b]
+			if cw ~= nil then
+				local px = x - half_center + str_width
+				if px > -5 and px < text_screen then
+					Graphics.drawPartialImage(px, y, gl_l[b], 0, cw, size, font, font_color)
+				end
+				str_width = str_width + cw + 1
 			end
-			str_width = str_width + cw + 1
 		end
-	end
 	end
 end
