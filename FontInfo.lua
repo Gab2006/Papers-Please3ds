@@ -170,166 +170,130 @@ g_init3('6',26,28)
 g_init3('7',30,32)
 g_init3('8',34,36)
 g_init3('9',38,40)
+
+-- [PERF] Build ASCII-byte-indexed lookup tables once at startup.
+-- GPU_DrawText uses string.byte(text, i) → integer, then indexes these tables
+-- directly, avoiding one string.sub allocation per glyph per frame.
+GL_L  = {} -- NORMAL_FONT (size 8) glyph left-X  indexed by ASCII byte
+GL_W  = {} -- NORMAL_FONT (size 8) glyph width   indexed by ASCII byte
+GL_L2 = {} -- SMALL_FONT  (size 7) glyph left-X  indexed by ASCII byte
+GL_W2 = {} -- SMALL_FONT  (size 7) glyph width   indexed by ASCII byte
+GL_L3 = {} -- DIGITS      (size 5) glyph left-X  indexed by ASCII byte
+GL_W3 = {} -- DIGITS      (size 5) glyph width   indexed by ASCII byte
+do
+	-- Populate from the existing string-keyed tables built by g_init/g_init2/g_init3
+	for ch, lx in pairs(glyph_l)  do GL_L [string.byte(ch)] = lx end
+	for ch, ww in pairs(glyph_w)  do GL_W [string.byte(ch)] = ww end
+	for ch, lx in pairs(glyph_l2) do GL_L2[string.byte(ch)] = lx end
+	for ch, ww in pairs(glyph_w2) do GL_W2[string.byte(ch)] = ww end
+	for ch, lx in pairs(glyph_l3) do GL_L3[string.byte(ch)] = lx end
+	for ch, ww in pairs(glyph_w3) do GL_W3[string.byte(ch)] = ww end
+end
+
 function GPU_DrawText(x, y, text, font_color, option, text_screen, font, size)
+	-- Early-out: entire text row is off-screen vertically
+	if y > 240 or y < -size then return end
+	-- Early-out: text starts to the right of the target screen
+	if x >= text_screen then return end
 	if option=="l" then
+	-- [PERF] Use string.byte for zero-alloc glyph indexing
 	local text_u
 	if size==7 then
-	text_u = text --my font system is caps-only.
+		text_u = text
 	elseif size==8 then
-	text_u = string.upper(text) --my font system is caps-only
+		text_u = string.upper(text)
 	elseif size==5 then
-	text_u = text
+		text_u = text
 	end
-    local i_str=0 --the current position in the string
-    local i_chr='' --the current character in the string
-    local str_width = 0 --width in pixels of the string
-    local str_length = string.len(text)
-    local cw --character width
-    while i_str < str_length do
-        i_str = i_str + 1
-        i_chr = string.sub(text_u, i_str, i_str)
-		if size==7 then
-        cw = glyph_w2[i_chr]
-		elseif size==8 then
-		cw = glyph_w[i_chr]
-		elseif size==5 then
-		cw = glyph_w3[i_chr]
-		end
-        if cw ~= nil then --as long as the character exists
-		if y<=240 and y>=(-1)*(size) and x+str_width>-5 and x+str_width<text_screen then
-			if size==7 then
-				Graphics.drawPartialImage(x+str_width, y, glyph_l2[i_chr], 0, cw, size, font, font_color)
-			elseif size==8 then
-				Graphics.drawPartialImage(x+str_width, y, glyph_l[i_chr], 0, cw, size, font, font_color)
-			elseif size==5 then
-				Graphics.drawPartialImage(x+str_width, y, glyph_l3[i_chr], 0, cw, size, font, font_color)
+	local str_length = #text_u
+	local str_width = 0
+	local gl_l, gl_w
+	if size==7 then gl_l=GL_L2; gl_w=GL_W2
+	elseif size==8 then gl_l=GL_L; gl_w=GL_W
+	elseif size==5 then gl_l=GL_L3; gl_w=GL_W3
+	end
+	for i_str = 1, str_length do
+		local b = string.byte(text_u, i_str)
+		local cw = gl_w[b]
+		if cw ~= nil then
+			local px = x + str_width
+			if px > -5 and px < text_screen then
+				Graphics.drawPartialImage(px, y, gl_l[b], 0, cw, size, font, font_color)
 			end
-		end
-            str_width = str_width + cw + 1
+			str_width = str_width + cw + 1
 		end
 	end
 	elseif option=="r" then
+	-- [PERF] Use string.byte for zero-alloc glyph indexing
+	local text_u
 	if size==7 then
-	text_u = text --my font system is caps-only.
+		text_u = text
 	elseif size==8 then
-	text_u = string.upper(text) --my font system is caps-only
-	end
-    local i_str=0 --the current position in the string
-    local i_chr='' --the current character in the string
-    local str_width = 0 --width in pixels of the string
-    local str_length = string.len(text)
-    local cw --character width
-    while i_str < str_length do
-        i_str = i_str + 1
-        i_chr = string.sub(text_u, i_str, i_str)
-        if size==7 then
-        cw = glyph_w2[i_chr]
-		elseif size==8 then
-		cw = glyph_w[i_chr]
-		elseif size==5 then
-		cw = glyph_w3[i_chr]
-		end
-        if cw ~= nil then --as long as the character exists
-            str_width = str_width + cw + 1
-		end
-	end
-	local right = str_width
-	if size==7 then
-	text_u = text --my font system is caps-only.
-	elseif size==8 then
-	text_u = string.upper(text) --my font system is caps-only
+		text_u = string.upper(text)
 	elseif size==5 then
-	text_u = text
+		text_u = text
 	end
-    local i_str=0 --the current position in the string
-    local i_chr='' --the current character in the string
-    local str_width = 0 --width in pixels of the string
-    local str_length = string.len(text)
-    local cw --character width
-    while i_str < str_length do
-        i_str = i_str + 1
-        i_chr = string.sub(text_u, i_str, i_str)
-        if size==7 then
-        cw = glyph_w2[i_chr]
-		elseif size==8 then
-		cw = glyph_w[i_chr]
-		elseif size==5 then
-		cw = glyph_w3[i_chr]
-		end
-        if cw ~= nil then --as long as the character exists
-		if y<=240 and y>=(-1)*(size) and x-right+str_width>-5 and x-right+str_width<text_screen then
-            if size==7 then
-			Graphics.drawPartialImage(x-right+str_width, y, glyph_l2[i_chr], 0, cw, size, font, font_color)
-			elseif size==8 then
-			Graphics.drawPartialImage(x-right+str_width, y, glyph_l[i_chr], 0, cw, size, font, font_color)
-			elseif size==5 then
-			Graphics.drawPartialImage(x-right+str_width, y, glyph_l3[i_chr], 0, cw, size, font, font_color)
+	local str_length = #text_u
+	local gl_l, gl_w
+	if size==7 then gl_l=GL_L2; gl_w=GL_W2
+	elseif size==8 then gl_l=GL_L; gl_w=GL_W
+	elseif size==5 then gl_l=GL_L3; gl_w=GL_W3
+	end
+	-- First pass: measure total width
+	local total_w = 0
+	for i_str = 1, str_length do
+		local b = string.byte(text_u, i_str)
+		local cw = gl_w[b]
+		if cw ~= nil then total_w = total_w + cw + 1 end
+	end
+	-- Second pass: draw right-aligned
+	local str_width = 0
+	for i_str = 1, str_length do
+		local b = string.byte(text_u, i_str)
+		local cw = gl_w[b]
+		if cw ~= nil then
+			local px = x - total_w + str_width
+			if px > -5 and px < text_screen then
+				Graphics.drawPartialImage(px, y, gl_l[b], 0, cw, size, font, font_color)
 			end
-		end
-            str_width = str_width + cw + 1
+			str_width = str_width + cw + 1
 		end
 	end
 	elseif option=="c" then
+	-- [PERF] Use string.byte for zero-alloc glyph indexing
+	local text_u
 	if size==7 then
-	text_u = text --my font system is caps-only.
+		text_u = text
 	elseif size==8 then
-	text_u = string.upper(text) --my font system is caps-only
+		text_u = string.upper(text)
 	elseif size==5 then
-	text_u = text
+		text_u = text
 	end
-    local i_str=0 --the current position in the string
-    local i_chr='' --the current character in the string
-    local str_width = 0 --width in pixels of the string
-    local str_length = string.len(text)
-    local cw --character width
-    while i_str < str_length do
-        i_str = i_str + 1
-        i_chr = string.sub(text_u, i_str, i_str)
-        if size==7 then
-        cw = glyph_w2[i_chr]
-		elseif size==8 then
-		cw = glyph_w[i_chr]
-		elseif size==5 then
-		cw = glyph_w3[i_chr]
-		end
-        if cw ~= nil then --as long as the character exists
-            str_width = str_width + cw + 1
-		end
+	local str_length = #text_u
+	local gl_l, gl_w
+	if size==7 then gl_l=GL_L2; gl_w=GL_W2
+	elseif size==8 then gl_l=GL_L; gl_w=GL_W
+	elseif size==5 then gl_l=GL_L3; gl_w=GL_W3
 	end
-	local center = str_width
-	if size==7 then
-	text_u = text --my font system is caps-only.
-	elseif size==8 then
-	text_u = string.upper(text) --my font system is caps-only
-	elseif size==5 then
-	text_u = text
+	-- First pass: measure total width
+	local total_w = 0
+	for i_str = 1, str_length do
+		local b = string.byte(text_u, i_str)
+		local cw = gl_w[b]
+		if cw ~= nil then total_w = total_w + cw + 1 end
 	end
-    local i_str=0 --the current position in the string
-    local i_chr='' --the current character in the string
-    local str_width = 0 --width in pixels of the string
-    local str_length = string.len(text)
-    local cw --character width
-    while i_str < str_length do
-        i_str = i_str + 1
-        i_chr = string.sub(text_u, i_str, i_str)
-        if size==7 then
-        cw = glyph_w2[i_chr]
-		elseif size==8 then
-		cw = glyph_w[i_chr]
-		elseif size==5 then
-		cw = glyph_w3[i_chr]
-		end
-        if cw ~= nil then --as long as the character exists
-		if y<=240 and y>=(-1)*(size) and x-math.floor(center/2)+str_width>-5 and x-math.floor(center/2)+str_width<text_screen then
-		if size==7 then
-            Graphics.drawPartialImage(x-math.floor(center/2)+str_width, y, glyph_l2[i_chr], 0, cw, size, font, font_color)
-		elseif size==8 then
-			Graphics.drawPartialImage(x-math.floor(center/2)+str_width, y, glyph_l[i_chr], 0, cw, size, font, font_color)
-			elseif size==5 then
-			Graphics.drawPartialImage(x-math.floor(center/2)+str_width, y, glyph_l3[i_chr], 0, cw, size, font, font_color)
-		end
-		end
-            str_width = str_width + cw + 1
+	-- Second pass: draw centered
+	local half_center = math.floor(total_w / 2)
+	local str_width = 0
+	for i_str = 1, str_length do
+		local b = string.byte(text_u, i_str)
+		local cw = gl_w[b]
+		if cw ~= nil then
+			local px = x - half_center + str_width
+			if px > -5 and px < text_screen then
+				Graphics.drawPartialImage(px, y, gl_l[b], 0, cw, size, font, font_color)
+			end
+			str_width = str_width + cw + 1
 		end
 	end
 	end

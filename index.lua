@@ -1421,6 +1421,15 @@ function TOUCH_CHECK(word,key)
 	end
 end
 function LOAD_IMAGE(word,key)
+	-- [PERF] Conservative off-screen cull: skip draw entirely if the document
+	-- is fully outside the 320x240 touch screen. Max document size is 238x162
+	-- (Rulebook open), so we use that as the worst-case bounding box.
+	-- This only fires when the doc is COMPLETELY off-screen (no false positives).
+	if word.now == 0 then
+		if word.y > 240 or word.y + 162 < 0 or word.x > 320 or word.x + 238 < 0 then
+			return
+		end
+	end
 	if word.is_cit then
 		if word.status == "DELAY" then
 			return
