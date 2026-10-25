@@ -1,3 +1,10 @@
+-- [GAME METADATA & VERSION]
+GAME_AUTHOR = "Gab2006"
+GAME_VERSION_MAJOR = 0
+GAME_VERSION_MINOR = 1
+GAME_VERSION_MICRO = 0
+GAME_VERSION = GAME_VERSION_MAJOR .. "." .. GAME_VERSION_MINOR .. "." .. GAME_VERSION_MICRO
+
 Graphics.init()
 oldpad = Controls.read()
 STICK = {x = 0,y = 0}
@@ -3052,6 +3059,10 @@ while true do
 			if (CURRENT_SAVE.day and CURRENT_SAVE.day > 1) or CURRENT_SAVE.in_progress == 1 then
 				GPU_DrawText(160, 204, "[X] RESTART FROM DAY 1", Color.new(150, 110, 110), "c", 320, SMALL_FONT, 7)
 			end
+		end
+		if TITLEy < -128 then
+			GPU_DrawText(4, 228, "v" .. GAME_VERSION, Color.new(110, 110, 110), "l", 100, SMALL_FONT, 7)
+			GPU_DrawText(316, 228, "by " .. GAME_AUTHOR, Color.new(110, 110, 110), "r", 320, SMALL_FONT, 7)
 		end
 		screenshotmake()
 		Graphics.termBlend()
