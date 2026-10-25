@@ -172,11 +172,11 @@ Pre-built binaries are available directly in this repository:
 The project includes a fully automated build pipeline that compiles the Lua RomFS filesystem and packages both `.cxi` and `.cia` formats.
 
 ### Prerequisites
-* **Python 3.8+**
-* Nintendo 3DS SDK tools (bundled in `tools/` or installed in `C:\devkitPro\tools\bin\`):
-  * `makerom.exe`
-  * `3dstool.exe`
-  * `mkromfs3ds.exe` (optional, built-in IVFC RomFS generator included in `tools/build.py`)
+* **Python 3.8+** (dipendenze opzionali per la generazione asset in [requirements.txt](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/requirements.txt): `pip install -r requirements.txt`)
+* Nintendo 3DS SDK tools (dettagli completi in [BUILD_REQUIREMENTS.md](file:///c:/Users/Gabriele%20Tosti/Desktop/romfs/BUILD_REQUIREMENTS.md)):
+  * `makerom.exe` (incluso in `tools/`)
+  * `3dstool.exe` (incluso in `tools/`)
+  * `mkromfs3ds.exe` (incluso in `C:\devkitPro\tools\bin\`)
 
 ### Compiling
 Run the one-click build script:

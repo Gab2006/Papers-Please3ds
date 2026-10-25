@@ -1,0 +1,9 @@
+# Papers, Please 3DS - Python Requirements
+#
+# build.py standard library only: os, sys, struct, hashlib, shutil, subprocess
+#
+# Dipendenze per gli script di supporto/generazione asset in tools/
+# - tools/generate_papers_please_assets.py: Pillow (PIL) per generazione e manipolazione texture
+# - tools/optimize_sounds.py: librerie standard Python (wave, struct, os, sys)
+
+Pillow>=10.0.0
