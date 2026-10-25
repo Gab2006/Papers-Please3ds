@@ -190,7 +190,34 @@ do
 	for ch, ww in pairs(glyph_w3) do GL_W3[string.byte(ch)] = ww end
 end
 
-function GPU_DrawText(x, y, text, font_color, option, text_screen, font, size)
+function GPU_MeasureText(text, size)
+	if text == nil then return 0 end
+	if type(text) ~= "string" then text = tostring(text) end
+	local text_u = (size == 8) and string.upper(text) or text
+	local str_length = #text_u
+	if str_length == 0 then return 0 end
+
+	local gl_w
+	if size == 7 then
+		gl_w = GL_W2
+	elseif size == 8 then
+		gl_w = GL_W
+	elseif size == 5 then
+		gl_w = GL_W3
+	else
+		return 0
+	end
+
+	local total_w = 0
+	for i = 1, str_length do
+		local b = string.byte(text_u, i)
+		local cw = gl_w[b]
+		if cw ~= nil then total_w = total_w + cw + 1 end
+	end
+	return total_w
+end
+
+function GPU_DrawText(x, y, text, font_color, option, text_screen, font, size, precomputed_w)
 	if text == nil then return end
 	if type(text) ~= "string" then
 		text = tostring(text)
@@ -200,7 +227,8 @@ function GPU_DrawText(x, y, text, font_color, option, text_screen, font, size)
 	-- Early-out: text starts to the right of the target screen
 	if x >= text_screen then return end
 
-	local text_u = (size == 8) and string.upper(text) or text
+	-- When precomputed_w is provided, text is already normalized/uppercased: avoid string allocation
+	local text_u = (precomputed_w ~= nil) and text or ((size == 8) and string.upper(text) or text)
 	local str_length = #text_u
 	if str_length == 0 then return end
 
@@ -232,14 +260,17 @@ function GPU_DrawText(x, y, text, font_color, option, text_screen, font, size)
 			end
 		end
 	elseif option == "r" then
-		-- First pass: measure total width
-		local total_w = 0
-		for i_str = 1, str_length do
-			local b = string.byte(text_u, i_str)
-			local cw = gl_w[b]
-			if cw ~= nil then total_w = total_w + cw + 1 end
+		local total_w = precomputed_w
+		if total_w == nil then
+			-- Fallback: measure total width if not pre-computed
+			total_w = 0
+			for i_str = 1, str_length do
+				local b = string.byte(text_u, i_str)
+				local cw = gl_w[b]
+				if cw ~= nil then total_w = total_w + cw + 1 end
+			end
 		end
-		-- Second pass: draw right-aligned
+		-- Draw right-aligned in single pass
 		local str_width = 0
 		for i_str = 1, str_length do
 			local b = string.byte(text_u, i_str)
@@ -253,15 +284,20 @@ function GPU_DrawText(x, y, text, font_color, option, text_screen, font, size)
 			end
 		end
 	elseif option == "c" then
-		-- First pass: measure total width
-		local total_w = 0
-		for i_str = 1, str_length do
-			local b = string.byte(text_u, i_str)
-			local cw = gl_w[b]
-			if cw ~= nil then total_w = total_w + cw + 1 end
+		local half_center
+		if precomputed_w ~= nil then
+			half_center = math.floor(precomputed_w / 2)
+		else
+			-- Fallback: measure total width if not pre-computed
+			local total_w = 0
+			for i_str = 1, str_length do
+				local b = string.byte(text_u, i_str)
+				local cw = gl_w[b]
+				if cw ~= nil then total_w = total_w + cw + 1 end
+			end
+			half_center = math.floor(total_w / 2)
 		end
-		-- Second pass: draw centered
-		local half_center = math.floor(total_w / 2)
+		-- Draw centered in single pass
 		local str_width = 0
 		for i_str = 1, str_length do
 			local b = string.byte(text_u, i_str)

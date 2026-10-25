@@ -106,11 +106,8 @@ function PLAY_SFX(id)
 		end
 	end
 	if s then
-		-- Only pause channels that were previously played (valid CSND channel allocated)
-		if AUDIO.sfx_played[id] and Sound and Sound.pause then
-			pcall(Sound.pause, s)
-		end
-		-- In LPP-3DS CSND: loop argument must be literal boolean false for SOUND_ONE_SHOT
+		-- In LPP-3DS CSND: loop argument must be literal boolean false for SOUND_ONE_SHOT.
+		-- Sound.play already reconfigures and resets registers on played channels cleanly without needing Sound.pause.
 		pcall(Sound.play, s, false)
 		AUDIO.sfx_played[id] = true
 	end
@@ -185,14 +182,12 @@ function STOP_AMBIENT()
 end
 
 function PAUSE_AUDIO()
+	-- Only pause continuous background audio (BGM/ambient).
+	-- Never pause short one-shot sound effects (SFX): doing so spams CSND command buffers in a tight loop,
+	-- causing race conditions and fatal ARM11 Data Aborts in the 3DS 'csnd' system service (0004013000002702).
 	if Sound and Sound.pause then
 		if AUDIO.current_ambient then pcall(Sound.pause, AUDIO.current_ambient) end
 		if AUDIO.current_bgm then pcall(Sound.pause, AUDIO.current_bgm) end
-		if AUDIO.sfx then
-			for id, h in pairs(AUDIO.sfx) do
-				if AUDIO.sfx_played[id] and h then pcall(Sound.pause, h) end
-			end
-		end
 	end
 end
 
@@ -208,13 +203,6 @@ function TERM_AUDIO()
 	if not AUDIO_READY then return end
 	STOP_BGM()
 	STOP_AMBIENT()
-	if AUDIO.sfx then
-		for id, h in pairs(AUDIO.sfx) do
-			if AUDIO.sfx_played[id] and Sound and Sound.pause and h then
-				pcall(Sound.pause, h)
-			end
-		end
-	end
 	-- DO NOT call Sound.term()! LPP-3DS main.cpp already calls csndExit()/ndspExit() on exit.
 	-- Calling Sound.term() explicitly in Lua causes a double csndExit(), unmapping shared memory and causing Data Abort.
 	AUDIO_READY = false
@@ -384,6 +372,15 @@ function LOAD_ITEMS()
 	RULEBOOK={state=2,key="RULEBOOK",now=1,x=5,y=23} --Load Data for RULEBOOK
 	DESKTOP={"RULEBOOK","TRANSCRIPT"} --NAMES OF THE ITEMS THAT ON TABLE
 	ALLITEMS={RULEBOOK,TRANSCRIPT} --TABLES OF ITEMS THAT IN DESKTOP table
+	ITEM_BY_KEY={
+		RULEBOOK = RULEBOOK,
+		TRANSCRIPT = TRANSCRIPT,
+		PASSPORT = PASSPORT,
+		IDCARD = IDCARD,
+		ENTRYPERMIT = ENTRYPERMIT,
+		WORKPASS = WORKPASS,
+		ENTRYTICKET = ENTRYTICKET
+	}
 end
 LOAD_ITEMS()
 TRAVELER_DOCS = {
@@ -570,6 +567,13 @@ function CLEAR_CITATIONS()
 			end
 		end
 	end
+	if ITEM_BY_KEY then
+		for k in pairs(ITEM_BY_KEY) do
+			if type(k) == "string" and k:sub(1, 9) == "CITATION_" then
+				ITEM_BY_KEY[k] = nil
+			end
+		end
+	end
 end
 
 function IS_CITATION_PRINTING()
@@ -593,11 +597,20 @@ function SPAWN_CITATION(reason_text, penalty_text, penalty_mode, penalty_pts, pe
 	CITATION_COUNT = CITATION_COUNT + 1
 	local id_str = "CITATION_" .. CITATION_COUNT
 	
+	local reason_u = string.upper(reason_text or "")
+	local penalty_u = string.upper(penalty_text or "")
+
 	local cit = {
 		key              = id_str,
 		is_cit           = true,
 		reason           = reason_text,
 		penalty          = penalty_text,
+		reason_u         = reason_u,
+		penalty_u        = penalty_u,
+		title_w          = GPU_MeasureText("MINISTRY OF ADMISSION", 7),
+		sub_w            = GPU_MeasureText("OFFICIAL CITATION", 7),
+		reason_w         = GPU_MeasureText(reason_u, 7),
+		penalty_w        = GPU_MeasureText(penalty_u, 7),
 		penalty_mode     = penalty_mode,
 		penalty_pts      = penalty_pts or 0,
 		penalty_time     = penalty_time or 0,
@@ -619,6 +632,9 @@ function SPAWN_CITATION(reason_text, penalty_text, penalty_mode, penalty_pts, pe
 	}
 	
 	CITATIONS[id_str] = cit
+	if ITEM_BY_KEY then
+		ITEM_BY_KEY[id_str] = cit
+	end
 	table.insert(DESKTOP, 1, id_str)
 	table.insert(ALLITEMS, 1, cit)
 end
@@ -1527,132 +1543,297 @@ function LOAD_IMAGE(word,key)
 		end
 	end
 end
-function LOAD_TEXT(key,face)
+DOC_TEXT_CACHE = {}
+CHAT_U = {}
+CHAT_W = {}
+
+local function add_doc_field(tbl, x_off, y_off, text, color, align, font, size)
+	if text == nil then return end
+	local s = tostring(text)
+	if size == 8 then s = string.upper(s) end
+	local w = GPU_MeasureText(s, size)
+	table.insert(tbl, {
+		x_off = x_off,
+		y_off = y_off,
+		text = s,
+		color = color,
+		align = align,
+		font = font,
+		size = size,
+		w = w
+	})
+end
+
+function BUILD_DOC_TEXT_CACHE()
+	DOC_TEXT_CACHE = {
+		PASSPORT = { fields = {}, photo = nil },
+		ENTRYTICKET = { fields = {} },
+		ENTRYPERMIT = { fields_align1 = {}, fields_align0 = {} },
+		IDCARD = { fields = {}, photo = nil },
+		WORKPASS = { fields_align1 = {}, fields_align0 = {} }
+	}
+
+	-- 1. PASSPORT
+	local p_fields = DOC_TEXT_CACHE.PASSPORT.fields
+	local p_type = PERSON.passport
+	local p_name = PERSON.name
+	local p_dob = PERSON.DOB
+	local p_gndr = PERSON.GNDR
+	local p_col = PERSON.COL
+	local p_exp = PERSON.passEXP
+	local p_id = PERSON.ID
+
+	if p_type == 1 then
+		add_doc_field(p_fields, 8, 138, p_name, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 22, 101, p_dob, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 22, 110, p_gndr, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 22, 119, p_col, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 22, 128, p_exp, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 55, 148, p_id, BROWN, "l", SMALL_FONT, 7)
+		DOC_TEXT_CACHE.PASSPORT.photo = { x_off = 83, y_off = 88 }
+	elseif p_type == 2 then
+		add_doc_field(p_fields, 8, 86, p_name, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 68, 98, p_dob, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 68, 106, p_gndr, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 68, 114, p_col, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 68, 122, p_exp, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 8, 148, p_id, BROWN, "l", SMALL_FONT, 7)
+		DOC_TEXT_CACHE.PASSPORT.photo = { x_off = 8, y_off = 98 }
+	elseif p_type == 3 then
+		add_doc_field(p_fields, 8, 85, p_name, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 69, 96, p_dob, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 69, 104, p_gndr, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 69, 112, p_col, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 69, 120, p_exp, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 60, 144, p_id, BROWN, "l", SMALL_FONT, 7)
+		DOC_TEXT_CACHE.PASSPORT.photo = { x_off = 9, y_off = 96 }
+	elseif p_type == 4 then
+		add_doc_field(p_fields, 8, 97, p_name, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 68, 107, p_dob, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 68, 115, p_gndr, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 68, 123, p_col, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 68, 131, p_exp, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 55, 148, p_id, BROWN, "l", SMALL_FONT, 7)
+		DOC_TEXT_CACHE.PASSPORT.photo = { x_off = 8, y_off = 107 }
+	elseif p_type == 5 then
+		add_doc_field(p_fields, 8, 86, p_name, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 26, 98, p_dob, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 26, 106, p_gndr, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 26, 114, p_col, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 26, 122, p_exp, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 55, 148, p_id, BROWN, "l", SMALL_FONT, 7)
+		DOC_TEXT_CACHE.PASSPORT.photo = { x_off = 85, y_off = 96 }
+	elseif p_type == 6 then
+		add_doc_field(p_fields, 8, 97, p_name, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 68, 107, p_dob, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 68, 115, p_gndr, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 68, 123, p_col, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 68, 131, p_exp, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 55, 147, p_id, BROWN, "l", SMALL_FONT, 7)
+		DOC_TEXT_CACHE.PASSPORT.photo = { x_off = 8, y_off = 106 }
+	elseif p_type == 8 then
+		add_doc_field(p_fields, 8, 97, p_name, BROWN, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 25, 111, p_dob, DOCUMENTS_WHITE, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 25, 119, p_gndr, DOCUMENTS_WHITE, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 25, 127, p_col, DOCUMENTS_WHITE, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 25, 135, p_exp, DOCUMENTS_WHITE, "l", SMALL_FONT, 7)
+		add_doc_field(p_fields, 10, 145, p_id, DOCUMENTS_WHITE, "l", SMALL_FONT, 7)
+		DOC_TEXT_CACHE.PASSPORT.photo = { x_off = 84, y_off = 107 }
+	end
+
+	-- 2. ENTRYTICKET
+	if PERSON.ticketEXP then
+		add_doc_field(DOC_TEXT_CACHE.ENTRYTICKET.fields, 72, 30, PERSON.ticketEXP, ENTRYTICKET_BROWN, "l", NORMAL_FONT, 8)
+	end
+
+	-- 3. ENTRYPERMIT
+	if PERSON.permitname then
+		local ep1 = DOC_TEXT_CACHE.ENTRYPERMIT.fields_align1
+		add_doc_field(ep1, 75, 89, PERSON.permitname, ENTRYTICKET_BROWN, "c", NORMAL_FONT, 8)
+		add_doc_field(ep1, 75, 120, PERSON.permitid, ENTRYTICKET_BROWN, "c", NORMAL_FONT, 8)
+		add_doc_field(ep1, 90, 137, PERSON.permitpurpose, ENTRYTICKET_BROWN, "c", NORMAL_FONT, 8)
+		add_doc_field(ep1, 90, 153, PERSON.permitduration, ENTRYTICKET_BROWN, "c", NORMAL_FONT, 8)
+		add_doc_field(ep1, 90, 169, PERSON.permitenterby, ENTRYTICKET_BROWN, "c", NORMAL_FONT, 8)
+
+		local ep0 = DOC_TEXT_CACHE.ENTRYPERMIT.fields_align0
+		add_doc_field(ep0, 25, 89, PERSON.permitname, ENTRYTICKET_BROWN, "l", NORMAL_FONT, 8)
+		add_doc_field(ep0, 25, 120, PERSON.permitid, ENTRYTICKET_BROWN, "l", NORMAL_FONT, 8)
+		add_doc_field(ep0, 60, 137, PERSON.permitpurpose, ENTRYTICKET_BROWN, "l", NORMAL_FONT, 8)
+		add_doc_field(ep0, 60, 153, PERSON.permitduration, ENTRYTICKET_BROWN, "l", NORMAL_FONT, 8)
+		add_doc_field(ep0, 60, 169, PERSON.permitenterby, ENTRYTICKET_BROWN, "l", NORMAL_FONT, 8)
+	end
+
+	-- 4. IDCARD
+	if PERSON.idcarddistrict then
+		local idc = DOC_TEXT_CACHE.IDCARD.fields
+		add_doc_field(idc, 8, 11, PERSON.idcarddistrict .. " DISTRICT", IDCARD_WCOLOR, "l", NORMAL_FONT, 8)
+		add_doc_field(idc, 49, 19, (PERSON.idcardlastname or "") .. ",", IDCARD_BCOLOR, "l", NORMAL_FONT, 8)
+		add_doc_field(idc, 49, 29, PERSON.idcardfirstname, IDCARD_BCOLOR, "l", NORMAL_FONT, 8)
+		add_doc_field(idc, 65, 39, PERSON.idcardDOB, IDCARD_BCOLOR, "l", NORMAL_FONT, 8)
+		add_doc_field(idc, 65, 49, PERSON.idcardheight, IDCARD_BCOLOR, "l", NORMAL_FONT, 8)
+		add_doc_field(idc, 65, 59, PERSON.idcardweight, IDCARD_BCOLOR, "l", NORMAL_FONT, 8)
+		DOC_TEXT_CACHE.IDCARD.photo = { x_off = 4, y_off = 17 }
+	end
+
+	-- 5. WORKPASS
+	if PERSON.WORKPASSholder then
+		local wp1 = DOC_TEXT_CACHE.WORKPASS.fields_align1
+		add_doc_field(wp1, 85, 63, PERSON.WORKPASSholder, WORKPASS_COLOR, "c", NORMAL_FONT, 8)
+		add_doc_field(wp1, 85, 79, PERSON.WORKPASSfield, WORKPASS_COLOR, "c", NORMAL_FONT, 8)
+		add_doc_field(wp1, 85, 95, PERSON.WORKPASSuntil, WORKPASS_COLOR, "c", NORMAL_FONT, 8)
+
+		local wp0 = DOC_TEXT_CACHE.WORKPASS.fields_align0
+		add_doc_field(wp0, 40, 63, PERSON.WORKPASSholder, WORKPASS_COLOR, "l", NORMAL_FONT, 8)
+		add_doc_field(wp0, 36, 79, PERSON.WORKPASSfield, WORKPASS_COLOR, "l", NORMAL_FONT, 8)
+		add_doc_field(wp0, 36, 95, PERSON.WORKPASSuntil, WORKPASS_COLOR, "l", NORMAL_FONT, 8)
+	end
+end
+
+function LOAD_TEXT(key, face)
+	if not DOC_TEXT_CACHE or not DOC_TEXT_CACHE.PASSPORT then
+		BUILD_DOC_TEXT_CACHE()
+	end
+
 	if CITATIONS and CITATIONS[key] then
 		local cit = CITATIONS[key]
 		local cx = math.floor(cit.x)
 		local cy = math.floor(cit.y)
-		GPU_DrawText(cx + 91, cy + 22, "MINISTRY OF ADMISSION", CITATION_COLOR, "c", 320, SMALL_FONT, 7)
-		GPU_DrawText(cx + 91, cy + 33, "OFFICIAL CITATION", CITATION_COLOR, "c", 320, SMALL_FONT, 7)
-		GPU_DrawText(cx + 91, cy + 44, string.upper(cit.reason or ""), CITATION_COLOR, "c", 320, SMALL_FONT, 7)
-		GPU_DrawText(cx + 91, cy + 56, string.upper(cit.penalty or ""), CITATION_COLOR, "c", 320, SMALL_FONT, 7)
+		if not cit.title_w then
+			cit.title_w = GPU_MeasureText("MINISTRY OF ADMISSION", 7)
+			cit.sub_w = GPU_MeasureText("OFFICIAL CITATION", 7)
+			cit.reason_u = string.upper(cit.reason or "")
+			cit.reason_w = GPU_MeasureText(cit.reason_u, 7)
+			cit.penalty_u = string.upper(cit.penalty or "")
+			cit.penalty_w = GPU_MeasureText(cit.penalty_u, 7)
+		end
+		if cy + 22 >= 65 and cy + 22 <= 240 then
+			GPU_DrawText(cx + 91, cy + 22, "MINISTRY OF ADMISSION", CITATION_COLOR, "c", 320, SMALL_FONT, 7, cit.title_w)
+		end
+		if cy + 33 >= 65 and cy + 33 <= 240 then
+			GPU_DrawText(cx + 91, cy + 33, "OFFICIAL CITATION", CITATION_COLOR, "c", 320, SMALL_FONT, 7, cit.sub_w)
+		end
+		if cy + 44 >= 65 and cy + 44 <= 240 then
+			GPU_DrawText(cx + 91, cy + 44, cit.reason_u, CITATION_COLOR, "c", 320, SMALL_FONT, 7, cit.reason_w)
+		end
+		if cy + 56 >= 65 and cy + 56 <= 240 then
+			GPU_DrawText(cx + 91, cy + 56, cit.penalty_u, CITATION_COLOR, "c", 320, SMALL_FONT, 7, cit.penalty_w)
+		end
 		return
 	end
-	if key=="PASSPORT" then
-		if PERSON.passport==1 then
-			GPU_DrawText(PASSPORT.x+8,PASSPORT.y+138, PERSON.name, BROWN,"l",320,SMALL_FONT,7) -- firstname and lastname
-			GPU_DrawText(PASSPORT.x+22,PASSPORT.y+101, PERSON.DOB, BROWN,"l",320,SMALL_FONT,7) -- date of birth
-			GPU_DrawText(PASSPORT.x+22,PASSPORT.y+110, PERSON.GNDR, BROWN,"l",320,SMALL_FONT,7) -- gender
-			GPU_DrawText(PASSPORT.x+22,PASSPORT.y+119, PERSON.COL, BROWN,"l",320,SMALL_FONT,7) --  city of living
-			GPU_DrawText(PASSPORT.x+22,PASSPORT.y+128, PERSON.passEXP, BROWN,"l",320,SMALL_FONT,7) -- PERSON.passEXP
-			GPU_DrawText(PASSPORT.x+55,PASSPORT.y+148, PERSON.ID, BROWN,"l",320,SMALL_FONT,7) --id code XXXXX-XXXXX
-			Graphics.drawPartialImage(PASSPORT.x+83,PASSPORT.y+88,40*(face - (11*(math.ceil((face-0.1)/11)-1)+1)),48*(math.ceil((face-0.1)/11)-1),40,48, FACE[5])
+
+	if key == "PASSPORT" then
+		local p_data = DOC_TEXT_CACHE.PASSPORT
+		if p_data then
+			local px = PASSPORT.x
+			local py = PASSPORT.y
+			local fields = p_data.fields
+			for i = 1, #fields do
+				local f = fields[i]
+				local ay = py + f.y_off
+				if ay >= 65 and ay <= 240 then
+					GPU_DrawText(px + f.x_off, ay, f.text, f.color, f.align, 320, f.font, f.size, f.w)
+				end
+			end
+			if p_data.photo then
+				local ay = py + p_data.photo.y_off
+				if ay >= 65 and ay <= 240 then
+					Graphics.drawPartialImage(px + p_data.photo.x_off, ay, 40*(face - (11*(math.ceil((face-0.1)/11)-1)+1)), 48*(math.ceil((face-0.1)/11)-1), 40, 48, FACE[5])
+				end
+			end
 		end
-		if PERSON.passport==2 then
-			GPU_DrawText(PASSPORT.x+8,PASSPORT.y+86, PERSON.name, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+68,PASSPORT.y+98, PERSON.DOB, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+68,PASSPORT.y+106,  PERSON.GNDR, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+68,PASSPORT.y+114,  PERSON.COL, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+68,PASSPORT.y+122,  PERSON.passEXP, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+8,PASSPORT.y+148,  PERSON.ID, BROWN,"l",320,SMALL_FONT,7)
-			Graphics.drawPartialImage(PASSPORT.x+8,PASSPORT.y+98,40*(face - (11*(math.ceil((face-0.1)/11)-1)+1)),48*(math.ceil((face-0.1)/11)-1),40,48, FACE[5])
+		if stamp == "NO" then
+			Graphics.drawPartialImage(PASSPORT.x + state2x, PASSPORT.y + state2y, statesp1, statesp2, statesp3, statesp4, NOSTAMP)
+		elseif stamp == "YES" then
+			Graphics.drawPartialImage(PASSPORT.x + state2x, PASSPORT.y + state2y, statesp1, statesp2, statesp3, statesp4, YESSTAMP)
 		end
-		if PERSON.passport==3 then
-			GPU_DrawText(PASSPORT.x+8,PASSPORT.y+85, PERSON.name, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+69,PASSPORT.y+96, PERSON.DOB, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+69,PASSPORT.y+104,  PERSON.GNDR, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+69,PASSPORT.y+112,  PERSON.COL, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+69,PASSPORT.y+120,  PERSON.passEXP, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+60,PASSPORT.y+144,  PERSON.ID, BROWN,"l",320,SMALL_FONT,7)
-			Graphics.drawPartialImage(PASSPORT.x+9,PASSPORT.y+96,40*(face - (11*(math.ceil((face-0.1)/11)-1)+1)),48*(math.ceil((face-0.1)/11)-1),40,48, FACE[5])
+	elseif key == "ENTRYTICKET" then
+		local et_data = DOC_TEXT_CACHE.ENTRYTICKET
+		if et_data then
+			local ex = ENTRYTICKET.x
+			local ey = ENTRYTICKET.y
+			local fields = et_data.fields
+			for i = 1, #fields do
+				local f = fields[i]
+				local ay = ey + f.y_off
+				if ay >= 65 and ay <= 240 then
+					GPU_DrawText(ex + f.x_off, ay, f.text, f.color, f.align, 320, f.font, f.size, f.w)
+				end
+			end
 		end
-		if PERSON.passport==4 then
-			GPU_DrawText(PASSPORT.x+8,PASSPORT.y+97, PERSON.name, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+68,PASSPORT.y+107, PERSON.DOB, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+68,PASSPORT.y+115,  PERSON.GNDR, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+68,PASSPORT.y+123,  PERSON.COL, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+68,PASSPORT.y+131,  PERSON.passEXP, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+55,PASSPORT.y+148,  PERSON.ID, BROWN,"l",320,SMALL_FONT,7)
-			Graphics.drawPartialImage(PASSPORT.x+8,PASSPORT.y+107,40*(face - (11*(math.ceil((face-0.1)/11)-1)+1)),48*(math.ceil((face-0.1)/11)-1),40,48, FACE[5])
+	elseif key == "ENTRYPERMIT" then
+		local ep_data = DOC_TEXT_CACHE.ENTRYPERMIT
+		if ep_data then
+			local ex = ENTRYPERMIT.x
+			local ey = ENTRYPERMIT.y
+			local moa_y = ey + PERSON.permity
+			if moa_y >= 65 and moa_y <= 240 then
+				Graphics.drawPartialImage(ex + PERSON.permitx, moa_y, 35*(PERSON.permitMOA - (4*(math.ceil((PERSON.permitMOA-0.1)/4)-1)+1)), 35*(math.ceil((PERSON.permitMOA-0.1)/4)-1), 35, 35, EMOA, Color.new(240,0,0,150))
+			end
+			local fields = (Options["TextAlign"] == 1) and ep_data.fields_align1 or ep_data.fields_align0
+			for i = 1, #fields do
+				local f = fields[i]
+				local ay = ey + f.y_off
+				if ay >= 65 and ay <= 240 then
+					GPU_DrawText(ex + f.x_off, ay, f.text, f.color, f.align, 320, f.font, f.size, f.w)
+				end
+			end
 		end
-		if PERSON.passport==5 then
-			GPU_DrawText(PASSPORT.x+8,PASSPORT.y+86, PERSON.name, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+26,PASSPORT.y+98, PERSON.DOB, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+26,PASSPORT.y+106,  PERSON.GNDR, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+26,PASSPORT.y+114,  PERSON.COL, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+26,PASSPORT.y+122,  PERSON.passEXP, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+55,PASSPORT.y+148,  PERSON.ID, BROWN,"l",320,SMALL_FONT,7)
-			Graphics.drawPartialImage(PASSPORT.x+85,PASSPORT.y+96,40*(face - (11*(math.ceil((face-0.1)/11)-1)+1)),48*(math.ceil((face-0.1)/11)-1),40,48, FACE[5])
+	elseif key == "IDCARD" then
+		local idc_data = DOC_TEXT_CACHE.IDCARD
+		if idc_data then
+			local ix = IDCARD.x
+			local iy = IDCARD.y
+			local fields = idc_data.fields
+			for i = 1, #fields do
+				local f = fields[i]
+				local ay = iy + f.y_off
+				if ay >= 65 and ay <= 240 then
+					GPU_DrawText(ix + f.x_off, ay, f.text, f.color, f.align, 320, f.font, f.size, f.w)
+				end
+			end
+			if idc_data.photo then
+				local ay = iy + idc_data.photo.y_off
+				if ay >= 65 and ay <= 240 then
+					Graphics.drawPartialImage(ix + idc_data.photo.x_off, ay, 40*(PERSON.idcardface - (11*(math.ceil((PERSON.idcardface-0.1)/11)-1)+1)), 48*(math.ceil((PERSON.idcardface-0.1)/11)-1), 40, 48, FACE[5])
+				end
+			end
 		end
-		if PERSON.passport==6 then
-			GPU_DrawText(PASSPORT.x+8,PASSPORT.y+97, PERSON.name, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+68,PASSPORT.y+107, PERSON.DOB, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+68,PASSPORT.y+115,  PERSON.GNDR, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+68,PASSPORT.y+123,  PERSON.COL, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+68,PASSPORT.y+131,  PERSON.passEXP, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+55,PASSPORT.y+147,  PERSON.ID, BROWN,"l",320,SMALL_FONT,7)
-			Graphics.drawPartialImage(PASSPORT.x+8,PASSPORT.y+106,40*(face - (11*(math.ceil((face-0.1)/11)-1)+1)),48*(math.ceil((face-0.1)/11)-1),40,48, FACE[5])
+	elseif key == "WORKPASS" then
+		local wp_data = DOC_TEXT_CACHE.WORKPASS
+		if wp_data then
+			local wx = WORKPASS.x
+			local wy = WORKPASS.y
+			local mol_y = wy + PERSON.WORKPASSy
+			if mol_y >= 65 and mol_y <= 240 then
+				Graphics.drawPartialImage(wx + PERSON.WORKPASSx, mol_y, 35*(PERSON.WORKPASSMOL - (4*(math.ceil((PERSON.WORKPASSMOL-0.1)/4)-1)+1)), 35*(math.ceil((PERSON.WORKPASSMOL-0.1)/4)-1), 35, 35, EMOL, Color.new(88,0,240,150))
+			end
+			local fields = (Options["TextAlign"] == 1) and wp_data.fields_align1 or wp_data.fields_align0
+			for i = 1, #fields do
+				local f = fields[i]
+				local ay = wy + f.y_off
+				if ay >= 65 and ay <= 240 then
+					GPU_DrawText(wx + f.x_off, ay, f.text, f.color, f.align, 320, f.font, f.size, f.w)
+				end
+			end
 		end
-		if PERSON.passport==7 then
-		end
-		if PERSON.passport==8 then
-			GPU_DrawText(PASSPORT.x+8,PASSPORT.y+97, PERSON.name, BROWN,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+25,PASSPORT.y+111, PERSON.DOB, DOCUMENTS_WHITE,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+25,PASSPORT.y+119,  PERSON.GNDR, DOCUMENTS_WHITE,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+25,PASSPORT.y+127,  PERSON.COL, DOCUMENTS_WHITE,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+25,PASSPORT.y+135,  PERSON.passEXP, DOCUMENTS_WHITE,"l",320,SMALL_FONT,7)
-			GPU_DrawText(PASSPORT.x+10,PASSPORT.y+145,  PERSON.ID, DOCUMENTS_WHITE,"l",320,SMALL_FONT,7)
-			Graphics.drawPartialImage(PASSPORT.x+84,PASSPORT.y+107,40*(face - (11*(math.ceil((face-0.1)/11)-1)+1)),48*(math.ceil((face-0.1)/11)-1),40,48, FACE[5])
-		end
-		if stamp=="NO" then
-			Graphics.drawPartialImage(PASSPORT.x+state2x,PASSPORT.y+state2y,statesp1,statesp2,statesp3,statesp4, NOSTAMP)
-			elseif stamp=="YES" then
-			Graphics.drawPartialImage(PASSPORT.x+state2x,PASSPORT.y+state2y,statesp1,statesp2,statesp3,statesp4, YESSTAMP)
-		end
-		elseif key=="ENTRYTICKET" then
-		GPU_DrawText(ENTRYTICKET.x+72,ENTRYTICKET.y+30, PERSON.ticketEXP, ENTRYTICKET_BROWN,320,NORMAL_FONT,8)
-		elseif key=="ENTRYPERMIT" then
-		Graphics.drawPartialImage(ENTRYPERMIT.x+PERSON.permitx,ENTRYPERMIT.y+PERSON.permity,35*(PERSON.permitMOA - (4*(math.ceil((PERSON.permitMOA-0.1)/4)-1)+1)),35*(math.ceil((PERSON.permitMOA-0.1)/4)-1),35,35, EMOA, Color.new(240,0,0,150))
-		if Options["TextAlign"]==1 then
-			GPU_DrawText(ENTRYPERMIT.x+75,ENTRYPERMIT.y+89, string.upper(PERSON.permitname), ENTRYTICKET_BROWN,"c",320,NORMAL_FONT,8)
-			GPU_DrawText(ENTRYPERMIT.x+75,ENTRYPERMIT.y+120, string.upper(PERSON.permitid), ENTRYTICKET_BROWN,"c",320,NORMAL_FONT,8)
-			GPU_DrawText(ENTRYPERMIT.x+90,ENTRYPERMIT.y+137, string.upper(PERSON.permitpurpose), ENTRYTICKET_BROWN,"c",320,NORMAL_FONT,8)
-			GPU_DrawText(ENTRYPERMIT.x+90,ENTRYPERMIT.y+153, string.upper(PERSON.permitduration), ENTRYTICKET_BROWN,"c",320,NORMAL_FONT,8)
-			GPU_DrawText(ENTRYPERMIT.x+90,ENTRYPERMIT.y+169, string.upper(PERSON.permitenterby), ENTRYTICKET_BROWN,"c",320,NORMAL_FONT,8)
-			elseif Options["TextAlign"]==0 then
-			GPU_DrawText(ENTRYPERMIT.x+25,ENTRYPERMIT.y+89, string.upper(PERSON.permitname), ENTRYTICKET_BROWN,"l",320,NORMAL_FONT,8)
-			GPU_DrawText(ENTRYPERMIT.x+25,ENTRYPERMIT.y+120, string.upper(PERSON.permitid), ENTRYTICKET_BROWN,"l",320,NORMAL_FONT,8)
-			GPU_DrawText(ENTRYPERMIT.x+60,ENTRYPERMIT.y+137, string.upper(PERSON.permitpurpose), ENTRYTICKET_BROWN,"l",320,NORMAL_FONT,8)
-			GPU_DrawText(ENTRYPERMIT.x+60,ENTRYPERMIT.y+153, string.upper(PERSON.permitduration), ENTRYTICKET_BROWN,"l",320,NORMAL_FONT,8)
-			GPU_DrawText(ENTRYPERMIT.x+60,ENTRYPERMIT.y+169, string.upper(PERSON.permitenterby), ENTRYTICKET_BROWN,"l",320,NORMAL_FONT,8)
-		end
-		elseif key=="IDCARD" then
-		GPU_DrawText(IDCARD.x+8,IDCARD.y+11, string.upper(PERSON.idcarddistrict).." DISTRICT", IDCARD_WCOLOR,"l",320,NORMAL_FONT,8)
-		GPU_DrawText(IDCARD.x+49,IDCARD.y+19, string.upper(PERSON.idcardlastname)..",", IDCARD_BCOLOR,"l",320,NORMAL_FONT,8)
-		GPU_DrawText(IDCARD.x+49,IDCARD.y+29, string.upper(PERSON.idcardfirstname), IDCARD_BCOLOR,"l",320,NORMAL_FONT,8)
-		GPU_DrawText(IDCARD.x+65,IDCARD.y+39, string.upper(PERSON.idcardDOB), IDCARD_BCOLOR,"l",320,NORMAL_FONT,8)
-		GPU_DrawText(IDCARD.x+65,IDCARD.y+49, string.upper(PERSON.idcardheight), IDCARD_BCOLOR,"l",320,NORMAL_FONT,8)
-		GPU_DrawText(IDCARD.x+65,IDCARD.y+59, string.upper(PERSON.idcardweight), IDCARD_BCOLOR,"l",320,NORMAL_FONT,8)
-		Graphics.drawPartialImage(IDCARD.x+4,IDCARD.y+17,40*(PERSON.idcardface - (11*(math.ceil((PERSON.idcardface-0.1)/11)-1)+1)),48*(math.ceil((PERSON.idcardface-0.1)/11)-1),40,48, FACE[5])
-		elseif key=="WORKPASS" then
-		Graphics.drawPartialImage(WORKPASS.x+PERSON.WORKPASSx,WORKPASS.y+PERSON.WORKPASSy,35*(PERSON.WORKPASSMOL - (4*(math.ceil((PERSON.WORKPASSMOL-0.1)/4)-1)+1)),35*(math.ceil((PERSON.WORKPASSMOL-0.1)/4)-1),35,35, EMOL, Color.new(88,0,240,150))
-		if Options["TextAlign"]==1 then
-			GPU_DrawText(WORKPASS.x+85,WORKPASS.y+63, string.upper(PERSON.WORKPASSholder), WORKPASS_COLOR,"c",320,NORMAL_FONT,8)
-			GPU_DrawText(WORKPASS.x+85,WORKPASS.y+79, string.upper(PERSON.WORKPASSfield), WORKPASS_COLOR,"c",320,NORMAL_FONT,8)
-			GPU_DrawText(WORKPASS.x+85,WORKPASS.y+95, string.upper(PERSON.WORKPASSuntil), WORKPASS_COLOR,"c",320,NORMAL_FONT,8)
-			elseif Options["TextAlign"]==0 then
-			GPU_DrawText(WORKPASS.x+40,WORKPASS.y+63, string.upper(PERSON.WORKPASSholder), WORKPASS_COLOR,"l",320,NORMAL_FONT,8)
-			GPU_DrawText(WORKPASS.x+36,WORKPASS.y+79, string.upper(PERSON.WORKPASSfield), WORKPASS_COLOR,"l",320,NORMAL_FONT,8)
-			GPU_DrawText(WORKPASS.x+36,WORKPASS.y+95, string.upper(PERSON.WORKPASSuntil), WORKPASS_COLOR,"l",320,NORMAL_FONT,8)
-		end
-		elseif key=="TRANSCRIPT" then
-		if Options["Dialog"]==1 then
-			for i=1, #CHAT do 
-				if CHATplace[i]==1 then
-					Graphics.drawImage(TRANSCRIPT.x+11,TRANSCRIPT.y+12+9*(i-1),TRANSCRIPT.tex3)
-					GPU_DrawText(TRANSCRIPT.x+12,TRANSCRIPT.y+13+9*(i-1), string.upper(CHAT[i]), TRANSCRIPTBLUE,"l",320,NORMAL_FONT,8)
-					elseif CHATplace[i]==2 then
-					GPU_DrawText(TRANSCRIPT.x+137,TRANSCRIPT.y+13+9*(i-1), string.upper(CHAT[i]), TRANSCRIPTBROWN,"r",320,NORMAL_FONT,8)
+	elseif key == "TRANSCRIPT" then
+		if Options["Dialog"] == 1 then
+			local tx = TRANSCRIPT.x
+			local ty = TRANSCRIPT.y
+			for i = 1, #CHAT do
+				local ly = ty + 13 + 9 * (i - 1)
+				if ly >= 65 and ly <= 240 then
+					if not CHAT_U[i] then
+						local u = string.upper(tostring(CHAT[i] or ""))
+						CHAT_U[i] = u
+						CHAT_W[i] = GPU_MeasureText(u, 8)
+					end
+					if CHATplace[i] == 1 then
+						Graphics.drawImage(tx + 11, ty + 12 + 9 * (i - 1), TRANSCRIPT.tex3)
+						GPU_DrawText(tx + 12, ly, CHAT_U[i], TRANSCRIPTBLUE, "l", 320, NORMAL_FONT, 8, CHAT_W[i])
+					elseif CHATplace[i] == 2 then
+						GPU_DrawText(tx + 137, ly, CHAT_U[i], TRANSCRIPTBROWN, "r", 320, NORMAL_FONT, 8, CHAT_W[i])
+					end
 				end
 			end
 		end
@@ -2066,6 +2247,8 @@ function RANDOMIZE()
 	for i=1,#ALLITEMS do table.remove(ALLITEMS,1) end
 	for i=1,#CHAT do table.remove(CHAT,1) end
 	for i=1,#CHATplace do table.remove(CHATplace,1) end
+	CHAT_U = {}
+	CHAT_W = {}
 	table.insert(DESKTOP,1,"TRANSCRIPT")
 	table.insert(ALLITEMS,1,TRANSCRIPT)
 	IDCARD.x=145
@@ -2340,10 +2523,12 @@ function RANDOMIZE()
 			if cit then
 				table.insert(DESKTOP, 1, cit.key)
 				table.insert(ALLITEMS, 1, cit)
+				ITEM_BY_KEY[cit.key] = cit
 			end
 		end
 	end
 	stamp=nil
+	BUILD_DOC_TEXT_CACHE()
 end
 function TECHMENU()
 	TECHMENUenable = 0
@@ -2779,10 +2964,9 @@ while true do
 			end
 		end
 		STAMP_CODE()
-		for i = 1 ,#DESKTOP do
-			for k = 1,#ALLITEMS do
-				if DESKTOP[i]==ALLITEMS[k].key then TOUCH_CHECK(ALLITEMS[k],ALLITEMS[k].key) end
-			end
+		for i = 1, #DESKTOP do
+			local itm = ITEM_BY_KEY[DESKTOP[i]]
+			if itm then TOUCH_CHECK(itm, itm.key) end
 		end
 		if TOUCH~="ACTIVE" and TOUCHx==0 and TOUCHy==0 then
 			TOUCH="ACTIVE"
@@ -2791,16 +2975,14 @@ while true do
 			TOUCH="NOTHING"
 		end
 		Graphics.drawPartialImage(0, 67, 0, 77, 320, 173, BKG_BTMS)
-		for i = 1,#DESKTOP do
-			for k=1,#ALLITEMS do
-				if DESKTOP[#DESKTOP-i+1]==ALLITEMS[k].key and ALLITEMS[k].now==0 then LOAD_IMAGE(ALLITEMS[k],ALLITEMS[k].key) end
-			end
+		for i = #DESKTOP, 1, -1 do
+			local itm = ITEM_BY_KEY[DESKTOP[i]]
+			if itm and itm.now == 0 then LOAD_IMAGE(itm, itm.key) end
 		end
 		Graphics.drawPartialImage(0, 0, 0, 0, 320, 77, BKG_BTMS)
-		for i = 1,#DESKTOP do
-			for k=1,#ALLITEMS do
-				if DESKTOP[#DESKTOP-i+1]==ALLITEMS[k].key and ALLITEMS[k].now==1 then LOAD_IMAGE(ALLITEMS[k],ALLITEMS[k].key) end
-			end
+		for i = #DESKTOP, 1, -1 do
+			local itm = ITEM_BY_KEY[DESKTOP[i]]
+			if itm and itm.now == 1 then LOAD_IMAGE(itm, itm.key) end
 		end
 		if stamp==nil then
 			Graphics.drawPartialImage(117, 0, 117, 0, 87, 8, BKG_BTMS)
