@@ -82,7 +82,7 @@ GEMINI.md
 .vs/
 *.sublime-project
 *.sublime-workspace
-
+docs/
 # Operating system files (Windows, macOS, Linux)
 Thumbs.db
 Thumbs.db:encryptable

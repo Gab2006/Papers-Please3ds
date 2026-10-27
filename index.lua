@@ -1,7 +1,7 @@
 -- [GAME METADATA & VERSION]
 GAME_AUTHOR = "Gab2006"
 GAME_VERSION_MAJOR = 0
-GAME_VERSION_MINOR = 1
+GAME_VERSION_MINOR = 2
 GAME_VERSION_MICRO = 0
 GAME_VERSION = GAME_VERSION_MAJOR .. "." .. GAME_VERSION_MINOR .. "." .. GAME_VERSION_MICRO
 
@@ -227,6 +227,7 @@ BACKbutton = Graphics.loadImage(System.currentDirectory().."ASSETS/BACKbutton.pn
 QUITbutton = Graphics.loadImage(System.currentDirectory().."ASSETS/QUITbutton.png")
 CHECKBOXbutton = Graphics.loadImage(System.currentDirectory().."ASSETS/CHECKBOX.png")
 MAINMENUbutton = Graphics.loadImage(System.currentDirectory().."ASSETS/MAINMENUbutton.png")
+SLEEPbutton = Graphics.loadImage(System.currentDirectory().."ASSETS/SLEEPbutton.png")
 RESUMEbutton = Graphics.loadImage(System.currentDirectory().."ASSETS/RESUMEbutton.png")
 STARTbutton = Graphics.loadImage(System.currentDirectory().."ASSETS/STARTbutton.png")
 Title = Graphics.loadImage(System.currentDirectory().."ASSETS/Title.png")
@@ -334,6 +335,7 @@ function GarbageCollection()
 	Graphics.freeImage(BACKbutton)
 	Graphics.freeImage(RESUMEbutton)
 	Graphics.freeImage(MAINMENUbutton)
+	if SLEEPbutton then Graphics.freeImage(SLEEPbutton) end
 	Graphics.freeImage(QUITbutton)
 	Graphics.freeImage(Title)
 	Graphics.freeImage(MODE1)
@@ -3222,6 +3224,8 @@ while true do
 			menu="Pause"
 		end
 		elseif menu==0 then
+		if NIGHTREPORT_TEX then Graphics.freeImage(NIGHTREPORT_TEX); NIGHTREPORT_TEX = nil end
+		GAMEOVER_ANIM_SCORE = nil
 		Graphics.initBlend(TOP_SCREEN)
 		Graphics.drawImage(0,TITLEy+265,Title)
 		screenshotmake()
@@ -3352,21 +3356,168 @@ while true do
 		Graphics.termBlend()
 		TITLE_MOVE()
 		elseif menu=="GameOver" then
+		STOP_AMBIENT()
+		if NIGHTREPORT_TEX == nil then
+			NIGHTREPORT_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/NightReport.png")
+		end
+		if MAINMENUbutton == nil then
+			MAINMENUbutton = Graphics.loadImage(System.currentDirectory().."ASSETS/MAINMENUbutton.png")
+		end
+
+		-- [TOP SCREEN: NIGHTREPORT BANNER & TERMINATION STATUS]
 		Graphics.initBlend(TOP_SCREEN)
-		Graphics.drawImage(0,TITLEy+265,Title)
+		Graphics.fillRect(0, 400, 0, 240, Color.new(0, 0, 0))
+
+		-- Draw authentic NightReport banner (374x29 centered at x=13, y=20)
+		if NIGHTREPORT_TEX then
+			Graphics.drawImage(13, 20, NIGHTREPORT_TEX)
+		end
+
+		-- Header label above plate
+		GPU_DrawText(200, 18, "END OF", Color.new(140, 160, 140), "c", 400, SMALL_FONT, 7)
+
+		-- Day number inside hexagonal plate (plate spans y=30 to y=48, centered at y=35)
+		local plate_text = "DAY " .. tostring(CURRENT_DAY or 1)
+		GPU_DrawText(200, 35, plate_text, Color.new(15, 25, 15), "c", 400, NORMAL_FONT, 8)
+
+		-- Status narrative in red
+		local gameover_sub = "Your account has fallen into a negative balance."
+		if MODEselect == 1 then
+			gameover_sub = "Shift time expired. Account in negative balance."
+		elseif MODEselect == 2 then
+			if WRONGCONST and WRONGCONST ~= "Nothing" then
+				gameover_sub = "Fatal infraction: " .. tostring(WRONGCONST)
+			else
+				gameover_sub = "Fatal infraction committed. Dismissal fine assessed."
+			end
+		end
+		GPU_DrawText(200, 68, gameover_sub, Color.new(220, 70, 70), "c", 400, SMALL_FONT, 7)
+
+		-- Subtle atmospheric watermark (East Grestin Housing)
+		GPU_DrawText(200, 145, "MINISTRY OF ADMISSION - CLASS-8 HOUSING", Color.new(65, 80, 65), "c", 400, SMALL_FONT, 7)
+		GPU_DrawText(200, 160, "EAST GRESTIN DISTRICT", Color.new(50, 65, 50), "c", 400, SMALL_FONT, 7)
+
 		screenshotmake()
 		Graphics.termBlend()
+
+		-- [BOTTOM SCREEN: AUTHENTIC TYPEWRITER FINANCIAL LEDGER - NEGATIVE SCORE]
 		Graphics.initBlend(BOTTOM_SCREEN)
-		GPU_DrawText(120,45,"Time........"..TIMEmin..":"..TIMEsec,WHITE,"l",320,SMALL_FONT,7)
-		GPU_DrawText(120,60,"Score......."..SCORE,WHITE,"l",320,SMALL_FONT,7)
-		GPU_DrawText(120,75,"Peoples....."..PEOPLESCORE,WHITE,"l",320,SMALL_FONT,7)
-		GPU_DrawText(120,90,"LASTreason.."..WRONGCONST,WHITE,"l",320,SMALL_FONT,7)
-		GPU_DrawText(120,105,"Mistakes..."..WRONGMANn,WHITE,"l",320,SMALL_FONT,7)
-		ScreenButton(96,132,MAINMENUbutton,0,MAINMENU)
-		ScreenButton(96,162,QUITbutton,"Exit",QUIT)
+		Graphics.fillRect(0, 320, 0, 240, Color.new(0, 0, 0))
+
+		local prev_savings = DAY_START_SCORE or 0
+		local earned_salary = (DAY_CORRECT_COUNT or 0) * 5
+		local exp_total = DAY_SUMMARY_EXPENSES or 20
+		local rent_val = math.max(10, exp_total - 10)
+		local food_val = 5
+		local heat_val = 5
+
+		-- Calculate citations / penalties ensuring the balance is strictly negative
+		local final_target_score = SCORE
+		local total_citations_fine = 0
+		if final_target_score < 0 then
+			total_citations_fine = (prev_savings + earned_salary) - (final_target_score + exp_total)
+			if total_citations_fine < 0 then total_citations_fine = 0 end
+		else
+			total_citations_fine = (prev_savings + earned_salary) - exp_total + 15
+			if total_citations_fine < 20 then total_citations_fine = 20 end
+			final_target_score = (prev_savings + earned_salary) - exp_total - total_citations_fine
+		end
+
+		-- Animate score count-down into negative
+		if GAMEOVER_ANIM_SCORE == nil then
+			GAMEOVER_ANIM_SCORE = prev_savings + earned_salary
+		end
+		if GAMEOVER_ANIM_SCORE > final_target_score then
+			local diff = GAMEOVER_ANIM_SCORE - final_target_score
+			local step = math.max(1, math.ceil(diff / 8))
+			GAMEOVER_ANIM_SCORE = GAMEOVER_ANIM_SCORE - step
+		end
+
+		local ledger_y = 32
+		local row_h = 17
+		local WHITE_LEDGER = Color.new(225, 225, 225)
+		local RED_LEDGER = Color.new(210, 60, 60)
+
+		-- Row 1: SAVINGS
+		GPU_DrawText(35, ledger_y, "SAVINGS", WHITE_LEDGER, "l", 320, NORMAL_FONT, 8)
+		GPU_DrawText(285, ledger_y, tostring(prev_savings), WHITE_LEDGER, "r", 320, NORMAL_FONT, 8)
+		ledger_y = ledger_y + row_h
+
+		-- Row 2: SALARY
+		GPU_DrawText(35, ledger_y, "SALARY - " .. tostring(DAY_CORRECT_COUNT or 0), WHITE_LEDGER, "l", 320, NORMAL_FONT, 8)
+		GPU_DrawText(285, ledger_y, tostring(earned_salary), WHITE_LEDGER, "r", 320, NORMAL_FONT, 8)
+		ledger_y = ledger_y + row_h
+
+		-- Row 3: CITATIONS / PENALTIES (in red)
+		if total_citations_fine > 0 then
+			local cit_label = (DAY_MISTAKES_COUNT and DAY_MISTAKES_COUNT > 0) and ("CITATIONS - " .. tostring(DAY_MISTAKES_COUNT)) or "PENALTIES"
+			GPU_DrawText(35, ledger_y, cit_label, RED_LEDGER, "l", 320, NORMAL_FONT, 8)
+			GPU_DrawText(285, ledger_y, "-" .. tostring(total_citations_fine), RED_LEDGER, "r", 320, NORMAL_FONT, 8)
+			ledger_y = ledger_y + row_h
+		end
+
+		-- Row 4: RENT
+		GPU_DrawText(35, ledger_y, "RENT", RED_LEDGER, "l", 320, NORMAL_FONT, 8)
+		GPU_DrawText(285, ledger_y, "-" .. tostring(rent_val), RED_LEDGER, "r", 320, NORMAL_FONT, 8)
+		ledger_y = ledger_y + row_h
+
+		-- Row 5: FOOD
+		GPU_DrawText(35, ledger_y, "FOOD", RED_LEDGER, "l", 320, NORMAL_FONT, 8)
+		GPU_DrawText(268, ledger_y, "-" .. tostring(food_val), RED_LEDGER, "r", 320, NORMAL_FONT, 8)
+		-- Bullseye toggle glyph [o]
+		Graphics.fillEmptyRect(276, 284, ledger_y, ledger_y + 8, RED_LEDGER)
+		Graphics.fillRect(279, 281, ledger_y + 3, ledger_y + 5, RED_LEDGER)
+		ledger_y = ledger_y + row_h
+
+		-- Row 6: HEAT
+		GPU_DrawText(35, ledger_y, "HEAT", RED_LEDGER, "l", 320, NORMAL_FONT, 8)
+		GPU_DrawText(268, ledger_y, "-" .. tostring(heat_val), RED_LEDGER, "r", 320, NORMAL_FONT, 8)
+		-- Bullseye toggle glyph [o]
+		Graphics.fillEmptyRect(276, 284, ledger_y, ledger_y + 8, RED_LEDGER)
+		Graphics.fillRect(279, 281, ledger_y + 3, ledger_y + 5, RED_LEDGER)
+		ledger_y = ledger_y + 13
+
+		-- Dotted divider line
+		for lx = 35, 285, 4 do
+			Graphics.fillRect(lx, lx + 2, ledger_y, ledger_y + 1, Color.new(100, 100, 100))
+		end
+		ledger_y = ledger_y + 7
+
+		-- Total / Balance: Animated into negative
+		local total_color = (GAMEOVER_ANIM_SCORE < 0) and RED_LEDGER or WHITE_LEDGER
+		local total_str = tostring(GAMEOVER_ANIM_SCORE) .. " CREDITS"
+		if GAMEOVER_ANIM_SCORE < 0 then
+			total_str = "-" .. tostring(math.abs(GAMEOVER_ANIM_SCORE)) .. " CREDITS"
+		end
+		GPU_DrawText(285, ledger_y, total_str, total_color, "r", 320, NORMAL_FONT, 8)
+
+		-- ONLY MAIN MENU BUTTON on bottom right (129x19 at 176, 206)
+		GAMEOVER_MENU_BTN = GAMEOVER_MENU_BTN or {touched = false}
+		if TOUCHx > 0 and TOUCHy > 0 then
+			if FADE_STATE == "NONE" and TOUCHx >= 176 and TOUCHx <= 305 and TOUCHy >= 200 and TOUCHy <= 235 then
+				GAMEOVER_MENU_BTN.touched = true
+			else
+				GAMEOVER_MENU_BTN.touched = false
+			end
+		end
+		if GAMEOVER_MENU_BTN.touched and TOUCHx > 0 and TOUCHy > 0 then
+			Graphics.drawPartialImage(176, 206, 0, 19, 129, 19, MAINMENUbutton)
+		else
+			Graphics.drawPartialImage(176, 206, 0, 0, 129, 19, MAINMENUbutton)
+		end
+
+		-- Trigger return to main menu
+		if FADE_STATE == "NONE" and ((TOUCHx == 0 and TOUCHy == 0 and GAMEOVER_MENU_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A)) or (Controls.check(pad, KEY_B) and not Controls.check(oldpad, KEY_B))) then
+			GAMEOVER_MENU_BTN.touched = false
+			GAMEOVER_ANIM_SCORE = nil
+			if NIGHTREPORT_TEX then Graphics.freeImage(NIGHTREPORT_TEX); NIGHTREPORT_TEX = nil end
+			CLEAR_CITATIONS()
+			STOP_BGM()
+			menu = 0
+		end
+
 		screenshotmake()
 		Graphics.termBlend()
-		TITLE_MOVE()
 		elseif menu=="DayIntro" then
 		local day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
 
@@ -3626,218 +3777,246 @@ while true do
 		Graphics.termBlend()
 		elseif menu=="DaySummary" then
 		STOP_AMBIENT()
-		if SCORE < 0 then
-			-- ==============================================================
-			-- [DEBT GAME OVER: SOMBER / DARK ARREST SCREEN (PAPERS, PLEASE)]
-			-- ==============================================================
-			-- [TOP SCREEN: BLEAK ARREST NOTICE & SUMMARY]
-			Graphics.initBlend(TOP_SCREEN)
-			Graphics.fillRect(0, 400, 0, 240, Color.new(12, 10, 14))
-			Graphics.fillRect(0, 400, 0, 3, Color.new(160, 30, 30))
-			Graphics.fillRect(0, 400, 237, 240, Color.new(160, 30, 30))
-			
-			GPU_DrawText(200, 16, "MINISTRY OF ADMISSION", Color.new(210, 50, 50), "c", 400, NORMAL_FONT, 8)
-			GPU_DrawText(200, 32, "NOTICE OF INDEBTEDNESS & TERMINATION", Color.new(180, 170, 160), "c", 400, SMALL_FONT, 7)
-			GPU_DrawText(200, 46, "GRESTIN BORDER DISTRICT - END OF SHIFT", Color.new(130, 120, 110), "c", 400, SMALL_FONT, 7)
-			
-			-- Dark central dossier container
-			Graphics.fillRect(30, 370, 58, 176, Color.new(20, 16, 20))
-			Graphics.fillEmptyRect(30, 370, 58, 176, Color.new(90, 30, 30))
-			Graphics.fillEmptyRect(32, 368, 60, 174, Color.new(45, 18, 20))
-			
-			GPU_DrawText(45, 68, "EMPLOYEE: INSPECTOR 221-A", Color.new(170, 160, 150), "l", 400, SMALL_FONT, 7)
-			GPU_DrawText(45, 84, "STATUS: DISMISSED & DETAINED", Color.new(220, 50, 50), "l", 400, SMALL_FONT, 7)
-			GPU_DrawText(45, 102, "ENTRANTS PROCESSED:", Color.new(150, 140, 130), "l", 400, SMALL_FONT, 7)
-			GPU_DrawText(355, 102, tostring(DAY_INSPECTED_COUNT), Color.new(200, 190, 180), "r", 400, NORMAL_FONT, 8)
-			GPU_DrawText(45, 120, "CITATIONS ACCUMULATED:", Color.new(180, 60, 60), "l", 400, SMALL_FONT, 7)
-			GPU_DrawText(355, 120, tostring(DAY_MISTAKES_COUNT), Color.new(220, 50, 50), "r", 400, NORMAL_FONT, 8)
-			
-			Graphics.fillRect(45, 355, 136, 137, Color.new(80, 30, 30))
-			
-			GPU_DrawText(45, 146, "FINAL ACCOUNT BALANCE:", Color.new(220, 180, 180), "l", 400, NORMAL_FONT, 8)
-			GPU_DrawText(355, 146, tostring(SCORE) .. " CREDITS", Color.new(240, 40, 40), "r", 400, NORMAL_FONT, 8)
-			
-			GPU_DrawText(200, 192, "AN INDEBTED OFFICER IS A NATIONAL SECURITY RISK.", Color.new(140, 40, 40), "c", 400, SMALL_FONT, 7)
-			GPU_DrawText(200, 212, "GLORY TO ARSTOTZKA.", Color.new(190, 40, 40), "c", 400, NORMAL_FONT, 8)
-			
-			if FADE_ALPHA > 0 then
-				Graphics.fillRect(0, 400, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
-			end
-			screenshotmake()
-			Graphics.termBlend()
+		-- Lazy load authentic NightReport & Button assets
+		if NIGHTREPORT_TEX == nil then
+			NIGHTREPORT_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/NightReport.png")
+		end
+		if MAINMENUbutton == nil then
+			MAINMENUbutton = Graphics.loadImage(System.currentDirectory().."ASSETS/MAINMENUbutton.png")
+		end
+		if SCORE >= 0 and SLEEPbutton == nil then
+			SLEEPbutton = Graphics.loadImage(System.currentDirectory().."ASSETS/SLEEPbutton.png")
+		end
+		if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
+		if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
 
-			-- [BOTTOM SCREEN: DARK ARREST WARRANT DECREE]
-			Graphics.initBlend(BOTTOM_SCREEN)
-			Graphics.fillRect(0, 320, 0, 240, Color.new(16, 13, 17))
-			
-			-- Document sheet background (dark charcoal)
-			Graphics.fillRect(15, 305, 10, 230, Color.new(24, 20, 24))
-			Graphics.fillEmptyRect(15, 305, 10, 230, Color.new(85, 30, 30))
-			Graphics.fillEmptyRect(17, 303, 12, 228, Color.new(45, 18, 20))
-			
-			-- Red header banner
-			Graphics.fillRect(25, 295, 18, 36, Color.new(80, 22, 22))
-			Graphics.fillEmptyRect(25, 295, 18, 36, Color.new(120, 35, 35))
-			GPU_DrawText(160, 23, "OFFICIAL NOTICE OF ARREST", Color.new(240, 210, 210), "c", 320, NORMAL_FONT, 8)
-			
-			-- Typewriter narrative lines
-			GPU_DrawText(28, 44, "Your account has fallen into a negative balance.", Color.new(210, 200, 190), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(28, 58, "You cannot pay the penalties assessed against you.", Color.new(210, 200, 190), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(28, 72, "The Ministry of Admission does not tolerate debt.", Color.new(210, 200, 190), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(28, 88, "You are under arrest for non-payment.", Color.new(230, 60, 60), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(28, 102, "Your family will be questioned and returned to Nirsk.", Color.new(170, 160, 150), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(28, 116, "A replacement inspector has been assigned.", Color.new(170, 160, 150), "l", 320, SMALL_FONT, 7)
-			
-			Graphics.fillRect(28, 292, 130, 131, Color.new(70, 25, 25))
-			GPU_DrawText(160, 138, "CAUSE OF DISMISSAL: INSOLVENCY", Color.new(200, 50, 50), "c", 320, NORMAL_FONT, 8)
-			
-			-- Button 1: RETRY DAY (A)
-			DAY_RETRY_BTN = DAY_RETRY_BTN or {touched = false}
-			if FADE_STATE == "NONE" and TOUCHx>=35 and TOUCHx<=285 and TOUCHy>=154 and TOUCHy<=182 then
-				Graphics.fillRect(35,285,154,182,Color.new(120,35,35))
-				DAY_RETRY_BTN.touched = true
+		-- [TOP SCREEN: AUTHENTIC PAPERS, PLEASE NIGHTREPORT HEADER & APARTMENT NARRATIVE]
+		Graphics.initBlend(TOP_SCREEN)
+		Graphics.fillRect(0, 400, 0, 240, Color.new(0, 0, 0))
+		
+		-- Draw authentic NightReport banner (374x29 centered at x=13, y=20)
+		if NIGHTREPORT_TEX then
+			Graphics.drawImage(13, 20, NIGHTREPORT_TEX)
+		end
+		
+		-- Header label above plate
+		GPU_DrawText(200, 18, "END OF", Color.new(140, 160, 140), "c", 400, SMALL_FONT, 7)
+		
+		-- Day number inside hexagonal plate (plate spans y=30 to y=48, centered at y=35)
+		GPU_DrawText(200, 35, "DAY " .. tostring(CURRENT_DAY or 1), Color.new(15, 25, 15), "c", 400, NORMAL_FONT, 8)
+		
+		-- Status narrative line at y=68
+		if SCORE < 0 then
+			-- Debt game over narrative in red
+			GPU_DrawText(200, 68, "Your account has fallen into a negative balance.", Color.new(220, 70, 70), "c", 400, SMALL_FONT, 7)
+		else
+			-- Narrative family status
+			local family_status_msg = "Your family is in good health."
+			if CURRENT_DAY == 1 then
+				family_status_msg = "The class-8 apartment in East Grestin is sparse."
+			elseif CURRENT_DAY == 2 then
+				family_status_msg = "Your family is in good health."
+			elseif CURRENT_DAY == 3 then
+				family_status_msg = "The temperature is dropping. Heating is required."
+			elseif CURRENT_DAY == 4 then
+				family_status_msg = "Your son is resting. The family is quiet."
 			else
-				Graphics.fillRect(35,285,154,182,Color.new(75,20,20))
+				local family_msgs = {
+					"Your family is in good health.",
+					"Your wife thanks you for the food.",
+					"Your son asks about the border checkpoint.",
+					"The neighborhood in East Grestin remains quiet.",
+					"Your uncle complains about the cold weather."
+				}
+				local msg_idx = ((CURRENT_DAY * 3 + 7) % #family_msgs) + 1
+				family_status_msg = family_msgs[msg_idx]
 			end
-			Graphics.fillEmptyRect(35,285,154,182,Color.new(140,40,40))
-			GPU_DrawText(160, 166, "RETRY DAY (A)", Color.new(250, 230, 230), "c", 320, NORMAL_FONT, 8)
-			
-			-- Button 2: MAIN MENU (B)
-			DAY_MENU_BTN = DAY_MENU_BTN or {touched = false}
-			if FADE_STATE == "NONE" and TOUCHx>=35 and TOUCHx<=285 and TOUCHy>=192 and TOUCHy<=220 then
-				Graphics.fillRect(35,285,192,220,Color.new(65,60,65))
-				DAY_MENU_BTN.touched = true
+			GPU_DrawText(200, 68, family_status_msg, Color.new(220, 220, 220), "c", 400, SMALL_FONT, 7)
+		end
+		
+		-- Subtle atmospheric watermark (East Grestin Housing)
+		GPU_DrawText(200, 145, "MINISTRY OF ADMISSION - CLASS-8 HOUSING", Color.new(65, 80, 65), "c", 400, SMALL_FONT, 7)
+		GPU_DrawText(200, 160, "EAST GRESTIN DISTRICT", Color.new(50, 65, 50), "c", 400, SMALL_FONT, 7)
+		
+		if FADE_ALPHA > 0 then
+			Graphics.fillRect(0, 400, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
+		end
+		screenshotmake()
+		Graphics.termBlend()
+		
+		-- [BOTTOM SCREEN: AUTHENTIC TYPEWRITER FINANCIAL LEDGER]
+		Graphics.initBlend(BOTTOM_SCREEN)
+		Graphics.fillRect(0, 320, 0, 240, Color.new(0, 0, 0))
+		
+		local exp_total = DAY_SUMMARY_EXPENSES or 20
+		local rent_val = math.max(10, exp_total - 10)
+		local food_val = 5
+		local heat_val = 5
+		
+		local prev_savings = DAY_START_SCORE or 0
+		local earned_salary = (DAY_CORRECT_COUNT or 0) * 5
+		local total_citations_fine = (prev_savings + earned_salary) - (SCORE + exp_total)
+		if total_citations_fine < 0 then total_citations_fine = 0 end
+		
+		-- Animate score count-down into negative if in debt
+		if SCORE < 0 then
+			if DAYSUMMARY_ANIM_SCORE == nil then
+				DAYSUMMARY_ANIM_SCORE = prev_savings + earned_salary
+			end
+			if DAYSUMMARY_ANIM_SCORE > SCORE then
+				local diff = DAYSUMMARY_ANIM_SCORE - SCORE
+				local step = math.max(1, math.ceil(diff / 8))
+				DAYSUMMARY_ANIM_SCORE = DAYSUMMARY_ANIM_SCORE - step
+			end
+		else
+			DAYSUMMARY_ANIM_SCORE = nil
+		end
+		
+		local ledger_y = 32
+		local row_h = 17
+		local RED_LEDGER = Color.new(210, 60, 60)
+		local WHITE_LEDGER = Color.new(225, 225, 225)
+		
+		-- Row 1: SAVINGS
+		GPU_DrawText(35, ledger_y, "SAVINGS", WHITE_LEDGER, "l", 320, NORMAL_FONT, 8)
+		GPU_DrawText(285, ledger_y, tostring(prev_savings), WHITE_LEDGER, "r", 320, NORMAL_FONT, 8)
+		ledger_y = ledger_y + row_h
+		
+		-- Row 2: SALARY
+		GPU_DrawText(35, ledger_y, "SALARY - " .. tostring(DAY_CORRECT_COUNT or 0), WHITE_LEDGER, "l", 320, NORMAL_FONT, 8)
+		GPU_DrawText(285, ledger_y, tostring(earned_salary), WHITE_LEDGER, "r", 320, NORMAL_FONT, 8)
+		ledger_y = ledger_y + row_h
+		
+		-- Row 3: CITATIONS (if any infractions committed)
+		if (DAY_MISTAKES_COUNT or 0) > 0 and total_citations_fine > 0 then
+			GPU_DrawText(35, ledger_y, "CITATIONS - " .. tostring(DAY_MISTAKES_COUNT), RED_LEDGER, "l", 320, NORMAL_FONT, 8)
+			GPU_DrawText(285, ledger_y, "-" .. tostring(total_citations_fine), RED_LEDGER, "r", 320, NORMAL_FONT, 8)
+			ledger_y = ledger_y + row_h
+		end
+		
+		-- Row 4: RENT
+		GPU_DrawText(35, ledger_y, "RENT", RED_LEDGER, "l", 320, NORMAL_FONT, 8)
+		GPU_DrawText(285, ledger_y, "-" .. tostring(rent_val), RED_LEDGER, "r", 320, NORMAL_FONT, 8)
+		ledger_y = ledger_y + row_h
+		
+		-- Row 5: FOOD
+		GPU_DrawText(35, ledger_y, "FOOD", RED_LEDGER, "l", 320, NORMAL_FONT, 8)
+		GPU_DrawText(268, ledger_y, "-" .. tostring(food_val), RED_LEDGER, "r", 320, NORMAL_FONT, 8)
+		-- Bullseye toggle glyph [o]
+		Graphics.fillEmptyRect(276, 284, ledger_y, ledger_y + 8, RED_LEDGER)
+		Graphics.fillRect(279, 281, ledger_y + 3, ledger_y + 5, RED_LEDGER)
+		ledger_y = ledger_y + row_h
+		
+		-- Row 6: HEAT
+		GPU_DrawText(35, ledger_y, "HEAT", RED_LEDGER, "l", 320, NORMAL_FONT, 8)
+		GPU_DrawText(268, ledger_y, "-" .. tostring(heat_val), RED_LEDGER, "r", 320, NORMAL_FONT, 8)
+		-- Bullseye toggle glyph [o]
+		Graphics.fillEmptyRect(276, 284, ledger_y, ledger_y + 8, RED_LEDGER)
+		Graphics.fillRect(279, 281, ledger_y + 3, ledger_y + 5, RED_LEDGER)
+		ledger_y = ledger_y + 13
+		
+		-- Dotted divider line
+		for lx = 35, 285, 4 do
+			Graphics.fillRect(lx, lx + 2, ledger_y, ledger_y + 1, Color.new(100, 100, 100))
+		end
+		ledger_y = ledger_y + 7
+		
+		-- Total / Balance
+		local disp_score = (SCORE < 0 and DAYSUMMARY_ANIM_SCORE) and DAYSUMMARY_ANIM_SCORE or SCORE
+		local total_color = (disp_score < 0) and RED_LEDGER or WHITE_LEDGER
+		local total_str = tostring(disp_score) .. " CREDITS"
+		if disp_score < 0 then
+			total_str = "-" .. tostring(math.abs(disp_score)) .. " CREDITS"
+		end
+		GPU_DrawText(285, ledger_y, total_str, total_color, "r", 320, NORMAL_FONT, 8)
+		
+		DAY_MENU_BTN = DAY_MENU_BTN or {touched = false}
+		DAY_SLEEP_BTN = DAY_SLEEP_BTN or {touched = false}
+		
+		if SCORE < 0 then
+			-- [DEBT GAME OVER]: ONLY MAIN MENU BUTTON on bottom-right (176, 206)
+			if TOUCHx > 0 and TOUCHy > 0 then
+				if FADE_STATE == "NONE" and TOUCHx >= 176 and TOUCHx <= 305 and TOUCHy >= 200 and TOUCHy <= 235 then
+					DAY_MENU_BTN.touched = true
+				else
+					DAY_MENU_BTN.touched = false
+				end
+			end
+			if DAY_MENU_BTN.touched and TOUCHx > 0 and TOUCHy > 0 then
+				Graphics.drawPartialImage(176, 206, 0, 19, 129, 19, MAINMENUbutton)
 			else
-				Graphics.fillRect(35,285,192,220,Color.new(40,36,40))
+				Graphics.drawPartialImage(176, 206, 0, 0, 129, 19, MAINMENUbutton)
 			end
-			Graphics.fillEmptyRect(35,285,192,220,Color.new(80,75,80))
-			GPU_DrawText(160, 204, "MAIN MENU (B)", Color.new(200, 200, 200), "c", 320, NORMAL_FONT, 8)
 			
-			if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_RETRY_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A))) then
-				DAY_RETRY_BTN.touched = false
-				if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
-				if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
+			-- Trigger return to main menu / reset save state (Debt Game Over)
+			if FADE_STATE == "NONE" and ((TOUCHx == 0 and TOUCHy == 0 and DAY_MENU_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A)) or (Controls.check(pad, KEY_B) and not Controls.check(oldpad, KEY_B))) then
+				DAY_MENU_BTN.touched = false
+				DAYSUMMARY_ANIM_SCORE = nil
+				if NIGHTREPORT_TEX then Graphics.freeImage(NIGHTREPORT_TEX); NIGHTREPORT_TEX = nil end
 				CLEAR_CITATIONS()
+				DAY_EXPENSES_DEDUCTED_DAY = nil
+				DAY_SUMMARY_EXPENSES = nil
+				-- Reset Nintendo save memory / progress upon insolvency dismissal
+				SAVE_GAME({
+					day = 1,
+					in_progress = 0,
+					elapsed = 0,
+					inspected = 0,
+					correct = 0,
+					mistakes = 0,
+					score = 0,
+					wrongmann = 0,
+					peoplescore = 0
+				})
+				CURRENT_SAVE = LOAD_GAME()
+				CURRENT_DAY = 1
+				DAY_START_SCORE = 0
+				SCORE = 0
 				DAY_INSPECTED_COUNT = 0
 				DAY_CORRECT_COUNT = 0
 				DAY_MISTAKES_COUNT = 0
 				DAY_TIME_OFFSET = 0
 				WRONGMANn = 0
 				PEOPLESCORE = 0
-				DAY_EXPENSES_DEDUCTED_DAY = nil
-				DAY_SUMMARY_EXPENSES = nil
-				SCORE = DAY_START_SCORE or 0
-				SAVE_GAME({
-					day = CURRENT_DAY,
-					in_progress = 0,
-					score = SCORE
-				})
-				FADE_STATE = "NONE"
-				FADE_ALPHA = 0
-				menu = "DayIntro"
-			end
-			
-			if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_MENU_BTN.touched) or (Controls.check(pad, KEY_B) and not Controls.check(oldpad, KEY_B))) then
-				DAY_MENU_BTN.touched = false
-				if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
-				if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
-				CLEAR_CITATIONS()
-				DAY_EXPENSES_DEDUCTED_DAY = nil
-				DAY_SUMMARY_EXPENSES = nil
-				SAVE_GAME({
-					day = CURRENT_DAY,
-					in_progress = 0,
-					score = DAY_START_SCORE or 0
-				})
-				DAY_TIME_OFFSET = 0
 				IS_STORY_MODE = false
 				FADE_STATE = "NONE"
 				FADE_ALPHA = 0
 				STOP_BGM()
 				menu = 0
 			end
-			
-			if FADE_ALPHA > 0 then
-				Graphics.fillRect(0, 320, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
-			end
-			if FADE_STATE == "IN_TO_SUMMARY" then
-				FADE_ALPHA = FADE_ALPHA - 8
-				if FADE_ALPHA <= 0 then
-					FADE_ALPHA = 0
-					FADE_STATE = "NONE"
+		else
+			-- [NORMAL SUMMARY]: MAIN MENU on bottom-left (15, 206) & SLEEP on bottom-right (176, 206)
+			if TOUCHx > 0 and TOUCHy > 0 then
+				if FADE_STATE == "NONE" and TOUCHx >= 15 and TOUCHx <= 144 and TOUCHy >= 200 and TOUCHy <= 235 then
+					DAY_MENU_BTN.touched = true
+				else
+					DAY_MENU_BTN.touched = false
 				end
 			end
-			screenshotmake()
-			Graphics.termBlend()
-		else
-			-- ==============================================================
-			-- [NORMAL DAY SUMMARY: SUCCESSFUL DAY (SCORE >= 0)]
-			-- ==============================================================
-			if DAYSUMMARY_BKG_TEX == nil then
-				DAYSUMMARY_BKG_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_DAYSUMMARY.png")
-			end
-			if DAYSUMMARY_TOP_TEX == nil then
-				DAYSUMMARY_TOP_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_DAYSUMMARY_TOP.png")
+			if DAY_MENU_BTN.touched and TOUCHx > 0 and TOUCHy > 0 then
+				Graphics.drawPartialImage(15, 206, 0, 19, 129, 19, MAINMENUbutton)
+			else
+				Graphics.drawPartialImage(15, 206, 0, 0, 129, 19, MAINMENUbutton)
 			end
 
-			-- [TOP SCREEN: DUSK / SHIFT SUMMARY HEADER]
-			Graphics.initBlend(TOP_SCREEN)
-			if DAYSUMMARY_TOP_TEX then
-				Graphics.drawImage(0, 0, DAYSUMMARY_TOP_TEX)
+			if TOUCHx > 0 and TOUCHy > 0 then
+				if FADE_STATE == "NONE" and TOUCHx >= 176 and TOUCHx <= 305 and TOUCHy >= 200 and TOUCHy <= 235 then
+					DAY_SLEEP_BTN.touched = true
+				else
+					DAY_SLEEP_BTN.touched = false
+				end
+			end
+			if DAY_SLEEP_BTN.touched and TOUCHx > 0 and TOUCHy > 0 then
+				Graphics.drawPartialImage(176, 206, 0, 19, 129, 19, SLEEPbutton)
 			else
-				Graphics.fillRect(0, 400, 0, 240, Color.new(15, 12, 18))
-				GPU_DrawText(200, 24, "MINISTRY OF ADMISSION", Color.new(225, 215, 200), "c", 400, NORMAL_FONT, 8)
-				GPU_DrawText(200, 42, "GRESTIN BORDER CHECKPOINT", Color.new(180, 170, 160), "c", 400, SMALL_FONT, 7)
-			end
-			GPU_DrawText(200, 70, "CHECKPOINT CLOSED - 18:00", Color.new(180, 50, 50), "c", 400, NORMAL_FONT, 8)
-			GPU_DrawText(200, 98, "END OF SHIFT - DAY "..CURRENT_DAY, WHITE, "c", 400, NORMAL_FONT, 8)
-			if FADE_ALPHA > 0 then
-				Graphics.fillRect(0, 400, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
-			end
-			screenshotmake()
-			Graphics.termBlend()
-			
-			-- [BOTTOM SCREEN: SUMMARY REPORT SHEET]
-			Graphics.initBlend(BOTTOM_SCREEN)
-			if DAYSUMMARY_BKG_TEX then
-				Graphics.drawImage(0, 0, DAYSUMMARY_BKG_TEX)
-			else
-				Graphics.fillRect(0, 320, 0, 240, Color.new(25, 20, 20))
-				Graphics.fillRect(15, 305, 12, 228, Color.new(230, 222, 205))
-				Graphics.fillEmptyRect(15, 305, 12, 228, Color.new(100, 80, 60))
+				Graphics.drawPartialImage(176, 206, 0, 0, 129, 19, SLEEPbutton)
 			end
 			
-			GPU_DrawText(160, 52, "DAILY INSPECTION REPORT", Color.new(82, 34, 34), "c", 320, NORMAL_FONT, 8)
-			Graphics.fillRect(35, 285, 61, 63, Color.new(82, 34, 34))
-			
-			GPU_DrawText(35, 68, "SALARY ("..DAY_CORRECT_COUNT.." APPROVED):", Color.new(40, 40, 40), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(280, 68, "+" .. tostring(DAY_CORRECT_COUNT * 5) .. " CREDITS", Color.new(20, 95, 20), "r", 320, NORMAL_FONT, 8)
-			
-			GPU_DrawText(35, 86, "CITATIONS / PENALTIES:", Color.new(180, 50, 50), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(280, 86, tostring(DAY_MISTAKES_COUNT), Color.new(180, 50, 50), "r", 320, NORMAL_FONT, 8)
-			
-			GPU_DrawText(35, 104, "RENT & FOOD EXPENSES:", Color.new(140, 50, 50), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(280, 104, "-" .. tostring(DAY_SUMMARY_EXPENSES or 20) .. " CREDITS", Color.new(160, 40, 40), "r", 320, NORMAL_FONT, 8)
-			
-			GPU_DrawText(35, 124, "SAVINGS BALANCE:", Color.new(30, 30, 30), "l", 320, SMALL_FONT, 7)
-			GPU_DrawText(280, 124, tostring(SCORE) .. " CREDITS", Color.new(20, 95, 20), "r", 320, NORMAL_FONT, 8)
-			
-			DAY_NEXT_BTN = DAY_NEXT_BTN or {touched = false}
-			GPU_DrawText(160, 142, "DAY "..CURRENT_DAY.." COMPLETE!", Color.new(25, 100, 25), "c", 320, NORMAL_FONT, 8)
-			
-			if FADE_STATE == "NONE" and TOUCHx>=45 and TOUCHx<=275 and TOUCHy>=156 and TOUCHy<=184 then
-				Graphics.fillRect(45,275,156,184,Color.new(80,160,80))
-				DAY_NEXT_BTN.touched = true
-			else
-				Graphics.fillRect(45,275,156,184,Color.new(45,120,45))
-			end
-			Graphics.fillEmptyRect(45,275,156,184,Color.new(20,60,20))
-			GPU_DrawText(160, 168, "NEXT DAY (A)", WHITE, "c", 320, NORMAL_FONT, 8)
-			
-			if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_NEXT_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A))) then
-				DAY_NEXT_BTN.touched = false
-				if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
-				if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
+			-- Trigger SLEEP -> Next Day
+			if FADE_STATE == "NONE" and ((TOUCHx == 0 and TOUCHy == 0 and DAY_SLEEP_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A))) then
+				DAY_SLEEP_BTN.touched = false
+				DAYSUMMARY_ANIM_SCORE = nil
+				if NIGHTREPORT_TEX then Graphics.freeImage(NIGHTREPORT_TEX); NIGHTREPORT_TEX = nil end
 				CLEAR_CITATIONS()
 				CURRENT_DAY = CURRENT_DAY + 1
 				DAY_START_SCORE = SCORE
@@ -3859,20 +4038,11 @@ while true do
 				menu = "DayIntro"
 			end
 			
-			DAY_MENU_BTN = DAY_MENU_BTN or {touched = false}
-			if FADE_STATE == "NONE" and TOUCHx>=55 and TOUCHx<=265 and TOUCHy>=192 and TOUCHy<=220 then
-				Graphics.fillRect(55,265,192,220,Color.new(100,100,100))
-				DAY_MENU_BTN.touched = true
-			else
-				Graphics.fillRect(55,265,192,220,Color.new(70,70,70))
-			end
-			Graphics.fillEmptyRect(55,265,192,220,Color.new(30,30,30))
-			GPU_DrawText(160, 204, "MAIN MENU (B)", WHITE, "c", 320, NORMAL_FONT, 8)
-			
-			if FADE_STATE == "NONE" and ((TOUCHx==0 and TOUCHy==0 and DAY_MENU_BTN.touched) or (Controls.check(pad, KEY_B) and not Controls.check(oldpad, KEY_B))) then
+			-- Trigger MENU -> Save and Quit to Title
+			if FADE_STATE == "NONE" and ((TOUCHx == 0 and TOUCHy == 0 and DAY_MENU_BTN.touched) or (Controls.check(pad, KEY_B) and not Controls.check(oldpad, KEY_B))) then
 				DAY_MENU_BTN.touched = false
-				if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
-				if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
+				DAYSUMMARY_ANIM_SCORE = nil
+				if NIGHTREPORT_TEX then Graphics.freeImage(NIGHTREPORT_TEX); NIGHTREPORT_TEX = nil end
 				local next_day = CURRENT_DAY + 1
 				DAY_START_SCORE = SCORE
 				DAY_EXPENSES_DEDUCTED_DAY = nil
@@ -3891,20 +4061,20 @@ while true do
 				STOP_BGM()
 				menu = 0
 			end
-			
-			if FADE_ALPHA > 0 then
-				Graphics.fillRect(0, 320, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
-			end
-			if FADE_STATE == "IN_TO_SUMMARY" then
-				FADE_ALPHA = FADE_ALPHA - 8
-				if FADE_ALPHA <= 0 then
-					FADE_ALPHA = 0
-					FADE_STATE = "NONE"
-				end
-			end
-			screenshotmake()
-			Graphics.termBlend()
 		end
+		
+		if FADE_ALPHA > 0 then
+			Graphics.fillRect(0, 320, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
+		end
+		if FADE_STATE == "IN_TO_SUMMARY" then
+			FADE_ALPHA = FADE_ALPHA - 8
+			if FADE_ALPHA <= 0 then
+				FADE_ALPHA = 0
+				FADE_STATE = "NONE"
+			end
+		end
+		screenshotmake()
+		Graphics.termBlend()
 	end
 	if Controls.check(pad,KEY_L) and activatescreenshot==0 and not Controls.check(oldpad,KEY_L)  then
 		Th,Tm,Ts = System.getTime()
