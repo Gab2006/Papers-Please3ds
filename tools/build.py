@@ -33,7 +33,7 @@ APP_DESCRIPTION = "Papers, Please (3DS Demake)"
 APP_AUTHOR = "Gab2006"
 APP_VERSION_MAJOR = 0
 APP_VERSION_MINOR = 2
-APP_VERSION_MICRO = 0
+APP_VERSION_MICRO = 1
 APP_VERSION_RAW = ((APP_VERSION_MAJOR & 0x3F) << 10) | ((APP_VERSION_MINOR & 0x3F) << 4) | (APP_VERSION_MICRO & 0x0F)
 APP_VERSION_STRING = f"v{APP_VERSION_MAJOR}.{APP_VERSION_MINOR}.{APP_VERSION_MICRO}"
 
@@ -146,8 +146,35 @@ def uncompress_3ds_blz(compressed):
     return bytes(out)
 
 def patch_cxi_code_if_needed(cxi_path):
-    PATCH_OFFSET = 0xd1e4
-    PATCH_BYTES = bytes.fromhex('0030a0e3 148084e5 103084e5 183084e5 203084e5')
+    """
+    Verifies and applies essential low-level binary patches to LPP-3DS .code executable:
+      1. CSND mem_size patch (offset 0xd1e4, 20 bytes): Prevents audio earrape, heap corruption,
+         and CSND DMA runaway by enforcing mem_size = 0 on non-streaming WAV sound descriptors.
+      2. Sleep / aptMainLoop hook (offset 0x124b8, 40 bytes in Screen.waitVblankStart):
+         LPP-3DS natively only called aptMainLoop() in outer main() before lua_dofile, leaving the
+         game's inner while true do loop completely detached from APT notifications. When the 3DS
+         clamshell lid was shut, the console stopped receiving VBlank interrupts, locking the
+         system into a permanent black screen freeze. This patch inserts bl aptMainLoop (0x1eac70)
+         into Screen.waitVblankStart so sleep/wake cycles and LCD power backlights are handled
+         seamlessly every frame.
+    """
+    CSND_PATCH_OFFSET = 0xd1e4
+    CSND_PATCH_BYTES = bytes.fromhex('0030a0e3 148084e5 103084e5 183084e5 203084e5')
+
+    SLEEP_PATCH_OFFSET = 0x124b8
+    SLEEP_PATCH_BYTES = bytes.fromhex(
+        '10402de9 '  # push {r4, lr}
+        'eb6103eb '  # bl 0x1eac70 (aptMainLoop)
+        '0110a0e3 '  # mov r1, #1
+        '0200a0e3 '  # mov r0, #2
+        '2e6b03eb '  # bl 0x1ed188 (gspWaitForVBlank)
+        '0000a0e3 '  # mov r0, #0
+        '1080bde8 '  # pop {r4, pc}
+        '0000a0e1 '  # nop
+        '0000a0e1 '  # nop
+        '0000a0e1'   # nop
+    )
+
     TOOL_3DSTOOL = os.path.join(TOOLS_DIR, "3dstool.exe")
     if not os.path.exists(TOOL_3DSTOOL):
         TOOL_3DSTOOL = os.path.join(PROJECT_ROOT, "tools", "3dstool.exe")
@@ -162,12 +189,20 @@ def patch_cxi_code_if_needed(cxi_path):
         code_comp = f.read(code_sz)
 
         dec = bytearray(uncompress_3ds_blz(code_comp))
-        if dec[PATCH_OFFSET : PATCH_OFFSET + 20] == PATCH_BYTES:
-            print("  [+] LPP-3DS CSND binary patch already verified in CXI.")
+        csnd_ok = (dec[CSND_PATCH_OFFSET : CSND_PATCH_OFFSET + 20] == CSND_PATCH_BYTES)
+        sleep_ok = (dec[SLEEP_PATCH_OFFSET : SLEEP_PATCH_OFFSET + 40] == SLEEP_PATCH_BYTES)
+
+        if csnd_ok and sleep_ok:
+            print("  [+] LPP-3DS binary patches (CSND mem_size & Sleep aptMainLoop) already verified in CXI.")
             return
 
-        print("  [*] Applying LPP-3DS CSND mem_size patch to .code binary...")
-        dec[PATCH_OFFSET : PATCH_OFFSET + 20] = PATCH_BYTES
+        print("  [*] Applying LPP-3DS binary patches to .code executable...")
+        if not csnd_ok:
+            print("      - Applying CSND mem_size patch (offset 0xd1e4)")
+            dec[CSND_PATCH_OFFSET : CSND_PATCH_OFFSET + 20] = CSND_PATCH_BYTES
+        if not sleep_ok:
+            print("      - Applying Sleep/APT aptMainLoop hook patch (offset 0x124b8)")
+            dec[SLEEP_PATCH_OFFSET : SLEEP_PATCH_OFFSET + 40] = SLEEP_PATCH_BYTES
 
         temp_code = os.path.join(PROJECT_ROOT, "_temp_code.bin")
         temp_comp = os.path.join(PROJECT_ROOT, "_temp_comp.bin")
@@ -186,12 +221,17 @@ def patch_cxi_code_if_needed(cxi_path):
         with open(temp_comp, 'rb') as cf:
             new_comp = cf.read()
 
-        if len(new_comp) != code_sz:
-            print(f"  [ERROR] Compressed size mismatch: {len(new_comp)} vs {code_sz}")
-            return
+        new_code_sz = len(new_comp)
+        # Update .code size in ExeFS header
+        exefs_hdr[12:16] = struct.pack('<I', new_code_sz)
 
         f.seek(exefs_off + 512)
         f.write(new_comp)
+
+        # Zero-pad remaining space up to banner section offset (0x154400)
+        pad_len = 0x154400 - new_code_sz
+        if pad_len > 0:
+            f.write(b"\x00" * pad_len)
 
         code_hash = hashlib.sha256(new_comp).digest()
         exefs_hdr[0x1E0:0x200] = code_hash
@@ -205,7 +245,7 @@ def patch_cxi_code_if_needed(cxi_path):
 
         if os.path.exists(temp_code): os.remove(temp_code)
         if os.path.exists(temp_comp): os.remove(temp_comp)
-        print("  [+] LPP-3DS CSND binary patch successfully applied and verified!")
+        print(f"  [+] LPP-3DS binary patches successfully applied and verified! (code_sz: {new_code_sz})")
 
 def update_cxi_metadata(cxi_path):
     """

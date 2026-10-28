@@ -2,7 +2,7 @@
 GAME_AUTHOR = "Gab2006"
 GAME_VERSION_MAJOR = 0
 GAME_VERSION_MINOR = 2
-GAME_VERSION_MICRO = 0
+GAME_VERSION_MICRO = 1
 GAME_VERSION = GAME_VERSION_MAJOR .. "." .. GAME_VERSION_MINOR .. "." .. GAME_VERSION_MICRO
 
 Graphics.init()
@@ -2874,6 +2874,12 @@ function LOAD_CLOCK()
 		Graphics.drawRotateImage(323,225, clockMINUTE,clockInt,Color.new(66,42,28))
 	end
 end
+
+PREV_SHELL_OPEN = true
+if Controls and Controls.shellStatus then
+	PREV_SHELL_OPEN = Controls.shellStatus()
+end
+
 while true do
 	Screen.refresh()
 	Screen.clear(TOP_SCREEN)
@@ -2881,6 +2887,42 @@ while true do
 	TOUCHx,TOUCHy = Controls.readTouch()
 	STICK.x,STICK.y = Controls.readCirclePad()
 	pad = Controls.read()
+
+	-- [CLAMSHELL SLEEP & POWER MANAGEMENT]
+	-- Detect physical 3DS lid open/close transitions via PTM service
+	local shell_open = true
+	if Controls and Controls.shellStatus then
+		shell_open = Controls.shellStatus()
+	end
+
+	if not shell_open then
+		if PREV_SHELL_OPEN then
+			PREV_SHELL_OPEN = false
+			-- When closing the 3DS clamshell during an active shift, auto-pause
+			-- so the shift clock (180s) does not advance while the console is asleep
+			if menu == 2 then
+				if GameTIME then Timer.pause(GameTIME) end
+				PAUSE_AUDIO()
+				menu = "Pause"
+			else
+				PAUSE_AUDIO()
+			end
+		end
+	else
+		if not PREV_SHELL_OPEN then
+			PREV_SHELL_OPEN = true
+			-- Guarantee hardware LCD display backlights are fully powered on upon lid reopening
+			if Controls and Controls.enableScreen then
+				pcall(Controls.enableScreen, 0)
+				pcall(Controls.enableScreen, 1)
+			end
+			-- Resume audio unless left on the Pause screen
+			if menu ~= "Pause" then
+				RESUME_AUDIO()
+			end
+		end
+	end
+
 	--OptionsOP()
 	if menu==2 then
 		Graphics.initBlend(BOTTOM_SCREEN)
