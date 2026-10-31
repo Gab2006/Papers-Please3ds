@@ -10,32 +10,33 @@ def generate_all():
     os.makedirs(ASSETS_DIR, exist_ok=True)
     
     # -------------------------------------------------------------------------
-    # COLOR PALETTES (Authentic Papers, Please values)
+    # COLOR PALETTES (Replicated News.png palette)
     # -------------------------------------------------------------------------
-    C_DESK_DARK      = (25, 18, 18)       # Metal border / deep shadow
-    C_DESK_SHADOW    = (50, 37, 37)       # Drop shadow
-    C_DESK_MID       = (103, 108, 84)     # Shaded olive drab desk
-    C_DESK_LIGHT     = (132, 138, 107)    # Classic olive desk surface
-    C_DESK_HIGHLIGHT = (162, 169, 131)    # Edge highlight
+    C_DESK_DARK      = (24, 22, 21)       # Dark charcoal outer border
+    C_DESK_SHADOW    = (18, 16, 15)       # Drop shadow
+    C_DESK_MID       = (35, 33, 30)       # Dark neutral desk
+    C_DESK_LIGHT     = (28, 26, 24)       # Desk surface
+    C_DESK_HIGHLIGHT = (48, 45, 42)       # Edge highlight
     
-    C_PAPER_BG       = (238, 235, 225)    # Clean off-white vintage newsprint
-    C_PAPER_SHADE    = (212, 208, 196)    # Dither / shaded paper
-    C_PAPER_BORDER   = (168, 160, 146)    # Document inner border
+    C_PAPER_BG       = (203, 202, 187)    # Authentic News.png paper base tan (#cbcabb)
+    C_PAPER_CREAM    = (239, 237, 220)    # Authentic News.png paper highlight (#efeddc)
+    C_PAPER_SHADE    = (167, 165, 154)    # Authentic News.png medium shadow (#a7a59a)
+    C_PAPER_BORDER   = (167, 165, 154)    # Document inner border
     
-    C_INK_BLACK      = (24, 22, 22)       # Printer's black ink (newspaper title & eagles)
-    C_INK_DARK       = (64, 62, 60)       # Medium dark ink / lines
-    C_INK_MID        = (125, 120, 112)    # Newsprint dither text
-    C_INK_LIGHT      = (188, 182, 172)    # Faint watermark & guidelines
+    C_INK_BLACK      = (24, 22, 21)       # Printer's black ink
+    C_INK_DARK       = (96, 95, 88)       # Authentic News.png charcoal ink (#605f58)
+    C_INK_MID        = (125, 120, 112)    # Muted ink
+    C_INK_LIGHT      = (185, 184, 172)    # Faint watermark & guidelines on tan paper
     
     # MUTED SOVIET RED (Muted/dull)
     C_RED_DARK       = (52, 20, 20)       # Muted shadow
     C_RED_BANNER     = (82, 34, 34)       # Muted, dull, drab Soviet oxblood/burgundy
     C_RED_LIGHT      = (108, 48, 48)      # Muted highlight
-    C_RED_STAMP_MUTE = (115, 48, 48)      # Faded vintage ink stamp for newspaper
+    C_RED_STAMP_MUTE = (140, 35, 35)      # Faded vintage ink stamp
     
-    # OFFICIAL STAMP RED (Except for stamp red!)
-    C_STAMP_PINK     = (245, 115, 115)    # Authentic official MOA stamp
-    C_GOLD_TEXT      = (205, 195, 160)    # Sub-text on banner
+    # OFFICIAL STAMP RED
+    C_STAMP_PINK     = (195, 70, 70)      # Authentic official MOA stamp
+    C_GOLD_TEXT      = (239, 237, 220)    # Authentic News.png cream text on banner
     
     # -------------------------------------------------------------------------
     # Pixel Art Font: 5x7 Bitmap Font for authentic retro text
@@ -155,61 +156,71 @@ def generate_all():
 
     # =========================================================================
     # 1. BOTTOM SCREEN BULLETIN BACKGROUND: BKG_BULLETIN_BTM.png (320 x 240)
+    # Replicates News.png layout, paper stack borders, and authentic palette
     # =========================================================================
-    btm = Image.new('RGB', (320, 240), C_DESK_LIGHT)
+    btm = Image.new('RGB', (320, 240), C_DESK_DARK)
     d_btm = ImageDraw.Draw(btm)
     
-    # Outer desk metal borders & bevels
-    d_btm.rectangle([(0, 0), (319, 5)], fill=C_DESK_DARK)
-    d_btm.line([(0, 6), (319, 6)], fill=C_DESK_MID)
-    d_btm.rectangle([(0, 235), (319, 239)], fill=C_DESK_DARK)
-    d_btm.line([(0, 234), (319, 234)], fill=C_DESK_MID)
-    d_btm.rectangle([(0, 0), (5, 239)], fill=C_DESK_DARK)
-    d_btm.line([(6, 0), (6, 239)], fill=C_DESK_MID)
-    d_btm.rectangle([(314, 0), (319, 239)], fill=C_DESK_DARK)
-    d_btm.line([(313, 0), (313, 239)], fill=C_DESK_MID)
+    # Drop shadow behind document (bottom & right)
+    d_btm.rectangle([(14, 12), (314, 236)], fill=C_DESK_SHADOW)
     
-    # Paper drop shadow
-    d_btm.rectangle([(12, 10), (312, 232)], fill=C_DESK_DARK)
-    d_btm.rectangle([(11, 9), (311, 231)], fill=C_DESK_SHADOW)
+    # Document Base Sheet: Tan paper surface (#cbcabb)
+    d_btm.rectangle([(8, 6), (304, 226)], fill=C_PAPER_BG)
     
-    # Paper base sheet (x=10..309, y=8..229)
-    d_btm.rectangle([(10, 8), (309, 229)], fill=C_PAPER_BG)
-    d_btm.rectangle([(10, 8), (309, 229)], outline=C_INK_DARK)
-    d_btm.rectangle([(12, 10), (307, 227)], outline=C_PAPER_BORDER)
+    # Top border & margin (News.png style)
+    d_btm.rectangle([(8, 6), (304, 11)], fill=C_PAPER_CREAM)
+    d_btm.line([(8, 12), (304, 12)], fill=C_INK_DARK)
+    d_btm.rectangle([(8, 13), (304, 16)], fill=C_PAPER_CREAM)
     
-    # Top Muted Header Banner (y=11..44) - MUTED!
-    d_btm.rectangle([(13, 11), (306, 44)], fill=C_RED_BANNER)
-    d_btm.line([(13, 11), (306, 11)], fill=C_RED_LIGHT)
-    d_btm.line([(13, 44), (306, 44)], fill=C_RED_DARK)
-    d_btm.line([(13, 45), (306, 45)], fill=C_INK_BLACK)
+    # Left border & margin (News.png style)
+    d_btm.rectangle([(8, 6), (13, 226)], fill=C_PAPER_CREAM)
+    d_btm.line([(14, 6), (14, 226)], fill=C_INK_DARK)
+    d_btm.rectangle([(15, 6), (19, 226)], fill=C_PAPER_CREAM)
     
-    # Eagle crests on header (warm off-white)
-    draw_eagle(d_btm, 32, 27, (225, 218, 205), scale=1)
-    draw_eagle(d_btm, 288, 27, (225, 218, 205), scale=1)
+    # Right edge (News.png layered folded page-stack effect)
+    d_btm.line([(304, 6), (304, 226)], fill=C_INK_DARK)
+    d_btm.rectangle([(305, 6), (308, 228)], fill=C_PAPER_CREAM)
+    d_btm.line([(309, 8), (309, 229)], fill=C_INK_DARK)
+    d_btm.line([(310, 8), (310, 230)], fill=C_PAPER_SHADE)
+    d_btm.line([(311, 9), (311, 231)], fill=C_INK_DARK)
+    
+    # Bottom edge (News.png shaded page edge)
+    d_btm.line([(14, 226), (304, 226)], fill=C_PAPER_CREAM)
+    d_btm.rectangle([(14, 227), (309, 231)], fill=C_PAPER_SHADE)
+    d_btm.rectangle([(14, 232), (311, 233)], fill=C_INK_DARK)
+    
+    # Top Muted Header Banner (y=17..46)
+    d_btm.rectangle([(20, 17), (298, 46)], fill=C_RED_BANNER)
+    d_btm.line([(20, 17), (298, 17)], fill=C_RED_LIGHT)
+    d_btm.line([(20, 46), (298, 46)], fill=C_RED_DARK)
+    d_btm.rectangle([(19, 16), (299, 47)], outline=C_INK_DARK)
+    
+    # Eagle crests on header (warm cream from News.png)
+    draw_eagle(d_btm, 36, 31, C_PAPER_CREAM, scale=1)
+    draw_eagle(d_btm, 282, 31, C_PAPER_CREAM, scale=1)
     
     # Faint Arstotzka Eagle Watermark in paper center
-    draw_eagle(d_btm, 160, 108, C_INK_LIGHT, scale=3)
+    draw_eagle(d_btm, 160, 112, C_INK_LIGHT, scale=3)
     
     # Subheader dividing bar
-    d_btm.line([(18, 56), (301, 56)], fill=C_INK_DARK)
-    d_btm.line([(18, 57), (301, 57)], fill=C_PAPER_SHADE)
+    d_btm.line([(24, 56), (296, 56)], fill=C_INK_DARK)
+    d_btm.line([(24, 57), (296, 57)], fill=C_PAPER_SHADE)
     
     # Dotted guidelines for directive rules
-    for gy in [76, 94, 112, 130]:
+    for gy in [78, 96, 114, 132]:
         for gx in range(24, 296, 4):
-            d_btm.point((gx, gy), fill=C_INK_LIGHT)
+            d_btm.point((gx, gy), fill=C_PAPER_SHADE)
             
     # Muted red bullet indicators on the left
-    for by in [69, 87, 105, 123]:
-        d_btm.rectangle([(20, by), (23, by + 3)], fill=C_RED_BANNER)
+    for by in [66, 84, 102, 120]:
+        d_btm.rectangle([(22, by), (25, by + 3)], fill=C_RED_BANNER)
         
-    # Circular Ministry seal stamp on bottom-right of sheet (EXCEPT FOR STAMP RED!)
+    # Circular Ministry seal stamp on bottom-right of sheet
     draw_seal(d_btm, 260, 148, radius=20, color=C_STAMP_PINK)
     
     # Divider above the action area
-    d_btm.line([(18, 160), (301, 160)], fill=C_PAPER_BORDER)
-    d_btm.line([(18, 161), (301, 161)], fill=C_INK_LIGHT)
+    d_btm.line([(24, 162), (296, 162)], fill=C_INK_DARK)
+    d_btm.line([(24, 163), (296, 163)], fill=C_PAPER_SHADE)
     
     btm_path = os.path.join(ASSETS_DIR, 'BKG_BULLETIN_BTM.png')
     btm.save(btm_path, 'PNG')

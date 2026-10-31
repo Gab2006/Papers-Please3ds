@@ -434,4 +434,160 @@ function GET_DAY_CONFIG(day)
 		duration_sec     = 180
 	}
 end
+
+--------------------------------------------------------------------------------
+-- INSPECTION MODE DATA: HOTSPOTS, ANCHORS & INTERROGATION DIALOGUES
+--------------------------------------------------------------------------------
+
+INSPECTION_HOTSPOTS_PASSPORT = {
+	[1] = {
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 22, yo = 101, w = 55,  h = 9 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 22, yo = 110, w = 30,  h = 9 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 22, yo = 119, w = 55,  h = 9 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 22, yo = 128, w = 55,  h = 9 },
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 138, w = 115, h = 10 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 55, yo = 148, w = 65,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 83, yo = 88,  w = 35,  h = 45 }
+	},
+	[2] = {
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 86,  w = 115, h = 10 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 68, yo = 98,  w = 55,  h = 9 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 68, yo = 106, w = 30,  h = 9 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 68, yo = 114, w = 55,  h = 9 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 68, yo = 122, w = 55,  h = 9 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 8,  yo = 148, w = 80,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 8,  yo = 98,  w = 35,  h = 45 }
+	},
+	[3] = {
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 85,  w = 115, h = 10 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 69, yo = 96,  w = 55,  h = 9 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 69, yo = 104, w = 30,  h = 9 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 69, yo = 112, w = 55,  h = 9 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 69, yo = 120, w = 55,  h = 9 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 60, yo = 144, w = 65,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 9,  yo = 96,  w = 35,  h = 45 }
+	},
+	[4] = {
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 97,  w = 115, h = 10 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 68, yo = 107, w = 55,  h = 9 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 68, yo = 115, w = 30,  h = 9 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 68, yo = 123, w = 55,  h = 9 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 68, yo = 131, w = 55,  h = 9 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 55, yo = 148, w = 65,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 8,  yo = 107, w = 35,  h = 45 }
+	},
+	[5] = {
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 86,  w = 115, h = 10 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 26, yo = 98,  w = 55,  h = 9 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 26, yo = 106, w = 30,  h = 9 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 26, yo = 114, w = 55,  h = 9 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 26, yo = 122, w = 55,  h = 9 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 55, yo = 148, w = 65,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 85, yo = 96,  w = 35,  h = 45 }
+	},
+	[6] = {
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 97,  w = 115, h = 10 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 68, yo = 107, w = 55,  h = 9 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 68, yo = 115, w = 30,  h = 9 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 68, yo = 123, w = 55,  h = 9 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 68, yo = 131, w = 55,  h = 9 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 55, yo = 147, w = 65,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 8,  yo = 106, w = 35,  h = 45 }
+	},
+	[8] = {
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 97,  w = 115, h = 10 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 25, yo = 111, w = 55,  h = 9 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 25, yo = 119, w = 30,  h = 9 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 25, yo = 127, w = 55,  h = 9 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 25, yo = 135, w = 55,  h = 9 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 10, yo = 145, w = 65,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 84, yo = 107, w = 35,  h = 45 }
+	}
+}
+INSPECTION_HOTSPOTS_PASSPORT[7] = INSPECTION_HOTSPOTS_PASSPORT[2]
+
+INSPECTION_HOTSPOTS = {
+	PASSPORT = INSPECTION_HOTSPOTS_PASSPORT[1],
+	ENTRYPERMIT = {
+		{ id = "PERMIT.NAME",     cat = "NAME",     xo = 15, yo = 85,  w = 110, h = 14 },
+		{ id = "PERMIT.ID_NUM",   cat = "ID_NUM",   xo = 15, yo = 116, w = 110, h = 14 },
+		{ id = "PERMIT.PURPOSE",  cat = "PURPOSE",  xo = 50, yo = 133, w = 80,  h = 14 },
+		{ id = "PERMIT.DURATION", cat = "DURATION", xo = 50, yo = 149, w = 80,  h = 14 },
+		{ id = "PERMIT.EXP_DATE", cat = "EXP_DATE", xo = 50, yo = 165, w = 80,  h = 14 },
+		{ id = "PERMIT.SEAL",     cat = "SEAL_MOA", xo = 10, yo = 11,  w = 45,  h = 35 }
+	},
+	IDCARD = {
+		{ id = "IDCARD.DISTRICT", cat = "DISTRICT", xo = 6,  yo = 8,   w = 120, h = 12 },
+		{ id = "IDCARD.NAME",     cat = "NAME",     xo = 45, yo = 18,  w = 80,  h = 20 },
+		{ id = "IDCARD.DOB",      cat = "DOB",      xo = 55, yo = 37,  w = 70,  h = 11 },
+		{ id = "IDCARD.HEIGHT",   cat = "HEIGHT",   xo = 55, yo = 47,  w = 70,  h = 11 },
+		{ id = "IDCARD.WEIGHT",   cat = "WEIGHT",   xo = 55, yo = 57,  w = 70,  h = 11 },
+		{ id = "IDCARD.PHOTO",    cat = "PHOTO",    xo = 4,  yo = 17,  w = 35,  h = 45 }
+	},
+	WORKPASS = {
+		{ id = "WORKPASS.NAME",     cat = "NAME",     xo = 20, yo = 60,  w = 100, h = 14 },
+		{ id = "WORKPASS.FIELD",    cat = "FIELD",    xo = 20, yo = 76,  w = 100, h = 14 },
+		{ id = "WORKPASS.EXP_DATE", cat = "EXP_DATE", xo = 20, yo = 92,  w = 100, h = 14 },
+		{ id = "WORKPASS.SEAL",     cat = "SEAL_MOL", xo = 6,  yo = 7,   w = 45,  h = 35 }
+	},
+	ENTRYTICKET = {
+		{ id = "TICKET.EXP_DATE", cat = "EXP_DATE", xo = 65, yo = 26,  w = 60,  h = 14 }
+	}
+}
+
+INSPECTION_ANCHORS = {
+	{ id = "ANCHOR.FACE", cat = "FACE",       x = 135, y = 4, w = 56, h = 20, label = "ENTRANT" },
+	{ id = "ANCHOR.DATE", cat = "TODAY_DATE",  x = 200, y = 4, w = 55, h = 20, label = "TODAY" }
+}
+
+INSPECTOR_ACCUSATIONS = {
+	[4]  = "The date of birth does not match.",
+	[5]  = "This issuing city is not valid.",
+	[6]  = "This district does not exist.",
+	[7]  = "The name does not match your documents.",
+	[8]  = "Your appearance does not match the listed sex.",
+	[9]  = "The ID number does not match.",
+	[10] = "Your height does not match your ID card.",
+	[11] = "Your weight does not match your ID card.",
+	[12] = "You do not look like your photo.",
+	[14] = "Your passport has expired.",
+	[15] = "Your entry permit has expired.",
+	[16] = "The labor seal appears forged.",
+	[17] = "The admission seal appears forged.",
+	[18] = "Your stated duration does not match the permit.",
+	embargo    = "Your nation is currently under embargo.",
+	wanted     = "You match the description of a wanted criminal.",
+	foreigners = "Entry is restricted to Arstotzkan citizens.",
+	default    = "There is a discrepancy in your documents."
+}
+
+ENTRANT_RESPONSES = {
+	[4]        = { "I am not sure why it is different.", "There must be a mistake." },
+	[5]        = { "That is where I was born!", "I do not understand the problem." },
+	[6]        = { "I have always lived there!", "Check your records again." },
+	[7]        = { "I recently changed my name.", "It is a family name." },
+	[8]        = { "I assure you, these are my documents.", "Please, there is no issue." },
+	[9]        = { "The numbers should match!", "Let me look at that again..." },
+	[10]       = { "I must have grown since then.", "The card is old." },
+	[11]       = { "I have lost weight recently.", "The measurement was wrong." },
+	[12]       = { "The photo is old. It is still me.", "I have changed since then." },
+	[14]       = { "I had no time to renew it!", "Please, I did not realize!" },
+	[15]       = { "I thought it was still valid!", "Can you make an exception?" },
+	[16]       = { "I got this from the Ministry!", "It should be authentic!" },
+	[17]       = { "The seal was applied at the office!", "This is legitimate!" },
+	[18]       = { "That is what I was told!", "The permit should be correct." },
+	embargo    = { "I have done nothing wrong!", "Please, I am not a threat!" },
+	wanted     = { "You have the wrong person!", "I am innocent, I swear!" },
+	foreigners = { "I only wanted to visit!", "Please let me through!" },
+	default    = { "I do not understand.", "There must be some mistake." }
+}
+
+
 

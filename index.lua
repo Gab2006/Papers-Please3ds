@@ -2,7 +2,7 @@
 GAME_AUTHOR = "Gab2006"
 GAME_VERSION_MAJOR = 0
 GAME_VERSION_MINOR = 2
-GAME_VERSION_MICRO = 1
+GAME_VERSION_MICRO = 2
 GAME_VERSION = GAME_VERSION_MAJOR .. "." .. GAME_VERSION_MINOR .. "." .. GAME_VERSION_MICRO
 
 Graphics.init()
@@ -88,7 +88,13 @@ local SFX_MAP = {
 	printer_tear = "printer-tear.wav",
 	button_down = "button-down.wav",
 	button_up = "button-up.wav",
-	booth_intro = "booth-intro.wav"
+	booth_intro = "booth-intro.wav",
+	inspect_open = "inspect-open.wav",
+	inspect_close = "inspect-close.wav",
+	inspect_highlight = "inspect-highlight.wav",
+	inspect_unhighlight = "inspect-unhighlight.wav",
+	inspect_interrogateon = "inspect-interrogateon.wav",
+	border_callguards = "border-callguards.wav"
 }
 
 function PLAY_SFX(id)
@@ -271,6 +277,9 @@ function loadtex()
 	FACE = {x=-24,y=104,Graphics.loadImage(System.currentDirectory().."ASSETS/FACE_1.png"), Graphics.loadImage(System.currentDirectory().."ASSETS/FACE_2.png"), Graphics.loadImage(System.currentDirectory().."ASSETS/FACE_3.png"), Graphics.loadImage(System.currentDirectory().."ASSETS/FACE_4.png"), Graphics.loadImage(System.currentDirectory().."ASSETS/FACE_5.png")}
 	CITATIONinner = Graphics.loadImage(System.currentDirectory().."ASSETS/CITATIONinner.png")
 	CITATIONouter = Graphics.loadImage(System.currentDirectory().."ASSETS/CITATIONouter.png")
+	INSPECT_BTN_OPEN = Graphics.loadImage(System.currentDirectory().."ASSETS/InspectButtonOpen.png")
+	INSPECT_BTN_CLOSE = Graphics.loadImage(System.currentDirectory().."ASSETS/InspectButtonClose.png")
+	DETAIN_BTN_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/DetainButton.png")
 end
 function GarbageCollection()
 	if BKG_BTMS~= nil then
@@ -323,6 +332,18 @@ function GarbageCollection()
 		if CITATIONouter ~= nil then
 			Graphics.freeImage(CITATIONouter)
 			CITATIONouter = nil
+		end
+		if INSPECT_BTN_OPEN ~= nil then
+			Graphics.freeImage(INSPECT_BTN_OPEN)
+			INSPECT_BTN_OPEN = nil
+		end
+		if INSPECT_BTN_CLOSE ~= nil then
+			Graphics.freeImage(INSPECT_BTN_CLOSE)
+			INSPECT_BTN_CLOSE = nil
+		end
+		if DETAIN_BTN_TEX ~= nil then
+			Graphics.freeImage(DETAIN_BTN_TEX)
+			DETAIN_BTN_TEX = nil
 		end
 	end
 	Graphics.freeImage(NORMAL_FONT)
@@ -385,6 +406,35 @@ function LOAD_ITEMS()
 	}
 end
 LOAD_ITEMS()
+
+INSPECTION = {
+	active = false,
+	selected = {},
+	match_found = false,
+	match_reason = nil,
+	is_grave = false,
+	interrogated = false,
+	can_detain = false,
+	detained = false,
+	line_timer = 0,
+	flash_timer = 0
+}
+
+function RESET_INSPECTION()
+	INSPECTION.active = false
+	INSPECTION.selected = {}
+	INSPECTION.match_found = false
+	INSPECTION.match_reason = nil
+	INSPECTION.is_grave = false
+	INSPECTION.interrogated = false
+	INSPECTION.interrogating = false
+	INSPECTION.interrogation_queue = nil
+	INSPECTION.can_detain = false
+	INSPECTION.detained = false
+	INSPECTION.line_timer = 0
+	INSPECTION.flash_timer = 0
+end
+
 TRAVELER_DOCS = {
 	["PASSPORT"] = true,
 	["IDCARD"] = true,
@@ -411,6 +461,22 @@ WRONGCONST = "Nothing"
 CHAT={} --Storage for dialog bubbles
 CHATplace={} --1 - left; 2 - right
 CHATx={} -- x coordinate for every dialog bubble
+CHATy={}
+CHATtime={}
+CHATw={}
+CHATframe={}
+
+function CLEAR_CHAT()
+	for i = 1, #CHAT do table.remove(CHAT, 1) end
+	for i = 1, #CHATplace do table.remove(CHATplace, 1) end
+	CHATx = {}
+	CHATy = {}
+	CHATtime = {}
+	CHATw = {}
+	CHATframe = {}
+	CHAT_U = {}
+	CHAT_W = {}
+end
 ENTRYTICKET.rot = math.random(-4,4)/10
 ENTRYPERMIT.rot =  math.random(-4,4)/10
 IDCARD.rot =  math.random(-4,4)/10
@@ -543,6 +609,7 @@ function CLEAR_CITATIONS()
 	PENDING_REWARDS = {}
 	LAST_PLUS_POINTS = 1
 	LAST_MINUS_POINTS = 5
+	if RESET_INSPECTION then RESET_INSPECTION() end
 	PERFECT_GAMEOVER_ACTIVE = false
 	PERFECT_GAMEOVER_READY = false
 	if PERFECT_TIMER then
@@ -843,6 +910,10 @@ function START_STORY_MODE()
 		Timer.reset(GameTIME)
 		Timer.resume(GameTIME)
 		Timer.reset(Clock)
+		if CBtime then
+			Timer.reset(CBtime)
+			Timer.resume(CBtime)
+		end
 		clockInt = 0
 		local day_cfg = GET_DAY_CONFIG(CURRENT_DAY)
 		local total_ms = (day_cfg and day_cfg.duration_sec or 180) * 1000
@@ -867,8 +938,7 @@ function START_STORY_MODE()
 		SWITCHER = 1
 		for i=1,#DESKTOP do table.remove(DESKTOP,1) end
 		for i=1,#ALLITEMS do table.remove(ALLITEMS,1) end
-		for i=1,#CHAT do table.remove(CHAT,1) end
-		for i=1,#CHATplace do table.remove(CHATplace,1) end
+		CLEAR_CHAT()
 		table.insert(DESKTOP,1,"TRANSCRIPT")
 		table.insert(ALLITEMS,1,TRANSCRIPT)
 		table.insert(DESKTOP,1,"RULEBOOK")
@@ -965,6 +1035,7 @@ function ScreenButton(xbut,ybut,texture,key,word)
 				loadtex()
 			end
 			Timer.resume(GameTIME)
+			if CBtime then Timer.resume(CBtime) end
 			RESUME_AUDIO()
 		end
 		if key==0 then
@@ -1001,8 +1072,7 @@ function ScreenButton(xbut,ybut,texture,key,word)
 			CURRENT_DAY = CURRENT_SAVE.day
 			for i=1,#DESKTOP do table.remove(DESKTOP,1) end
 			for i=1,#ALLITEMS do table.remove(ALLITEMS,1) end
-			for i=1,#CHAT do table.remove(CHAT,1) end
-			for i=1,#CHATplace do table.remove(CHATplace,1) end
+			CLEAR_CHAT()
 			table.insert(DESKTOP,1,"TRANSCRIPT")
 			table.insert(ALLITEMS,1,TRANSCRIPT)
 			table.insert(DESKTOP,1,"RULEBOOK")
@@ -1438,6 +1508,676 @@ function TOUCH_CHECK(word,key)
 		end
 	end
 end
+
+--------------------------------------------------------------------------------
+-- INSPECTION MODE: ACTIVE HOTSPOTS RESOLUTION & TOUCH HIT-TESTING
+--------------------------------------------------------------------------------
+
+function GET_ACTIVE_HOTSPOTS()
+	local hotspots = {}
+	if not INSPECTION_HOTSPOTS then return hotspots end
+	for i = 1, #DESKTOP do
+		local key = DESKTOP[i]
+		local doc = ITEM_BY_KEY and ITEM_BY_KEY[key]
+		if doc and doc.now == 0 then
+			local templates = nil
+			if key == "PASSPORT" and INSPECTION_HOTSPOTS_PASSPORT and PERSON and PERSON.passport then
+				templates = INSPECTION_HOTSPOTS_PASSPORT[PERSON.passport]
+			elseif key == "RULEBOOK" then
+				if doc.state == 8 then
+					templates = {
+						{ id = "RULEBOOK.SEAL_MOA", cat = "SEAL_MOA", xo = 15,  yo = 100, w = 86, h = 42 },
+						{ id = "RULEBOOK.TEXT_MOA", cat = "SEAL_MOA", xo = 15,  yo = 25,  w = 86, h = 70 },
+						{ id = "RULEBOOK.SEAL_MOL", cat = "SEAL_MOL", xo = 133, yo = 22,  w = 92, h = 78 },
+						{ id = "RULEBOOK.TEXT_MOL", cat = "SEAL_MOL", xo = 133, yo = 104, w = 92, h = 42 }
+					}
+				elseif doc.state == 2 then
+					templates = {
+						{ id = "RULEBOOK.RULE_FOR",  cat = "RULE_FOREIGNERS", xo = 120, yo = 40, w = 110, h = 18 },
+						{ id = "RULEBOOK.RULE_DATE", cat = "TODAY_DATE",      xo = 120, yo = 60, w = 110, h = 18 },
+						{ id = "RULEBOOK.RULE_SEAL", cat = "RULE_SEAL",       xo = 120, yo = 80, w = 110, h = 25 }
+					}
+				end
+			end
+			if not templates then
+				templates = INSPECTION_HOTSPOTS[key]
+			end
+			if templates then
+				for _, t in ipairs(templates) do
+					local xo = t.xo
+					local yo = t.yo
+					if key == "ENTRYPERMIT" and t.cat == "SEAL_MOA" and PERSON and PERSON.permitx and PERSON.permity then
+						xo = PERSON.permitx
+						yo = PERSON.permity
+					elseif key == "WORKPASS" and t.cat == "SEAL_MOL" and PERSON and PERSON.WORKPASSx and PERSON.WORKPASSy then
+						xo = PERSON.WORKPASSx
+						yo = PERSON.WORKPASSy
+					end
+					table.insert(hotspots, {
+						id = t.id,
+						cat = t.cat,
+						x = doc.x + xo,
+						y = doc.y + yo,
+						w = t.w,
+						h = t.h,
+						doc = key
+					})
+				end
+			end
+		end
+	end
+
+	-- Add anchors (always selectable during inspection, on upper shelf)
+	if INSPECTION_ANCHORS then
+		for _, a in ipairs(INSPECTION_ANCHORS) do
+			table.insert(hotspots, {
+				id = a.id,
+				cat = a.cat,
+				x = a.x,
+				y = a.y,
+				w = a.w,
+				h = a.h,
+				label = a.label,
+				doc = "ANCHOR"
+			})
+		end
+	end
+
+	return hotspots
+end
+
+function INSPECTION_TOUCH(tx, ty)
+	-- Allow flipping rulebook pages during inspection mode
+	local rb = ITEM_BY_KEY and ITEM_BY_KEY["RULEBOOK"]
+	if rb and rb.now == 0 then
+		if tx >= rb.x + 215 and tx <= rb.x + 238 and ty >= rb.y + 138 and ty <= rb.y + 158 and rb.state < 8 then
+			rb.state = rb.state + 1
+			INSPECTION.selected = {}
+			INSPECTION.match_found = false
+			PLAY_SFX("paper_turnpage")
+			return true
+		elseif tx >= rb.x and tx <= rb.x + 22 and ty >= rb.y + 138 and ty <= rb.y + 158 and rb.state > 2 then
+			rb.state = rb.state - 1
+			INSPECTION.selected = {}
+			INSPECTION.match_found = false
+			PLAY_SFX("paper_turnpage")
+			return true
+		end
+	end
+
+	local hotspots = GET_ACTIVE_HOTSPOTS()
+	local pad_x = 4
+	local pad_y = 4
+	for _, hs in ipairs(hotspots) do
+		if tx >= hs.x - pad_x and tx <= hs.x + hs.w + pad_x and ty >= hs.y - pad_y and ty <= hs.y + hs.h + pad_y then
+			-- Check if already selected -> deselect
+			for j, sel in ipairs(INSPECTION.selected) do
+				if sel.id == hs.id then
+					table.remove(INSPECTION.selected, j)
+					PLAY_SFX("inspect_unhighlight")
+					INSPECTION.match_found = false
+					INSPECTION.match_reason = nil
+					return true
+				end
+			end
+			-- If 2 already selected, remove oldest (FIFO queue of 2)
+			if #INSPECTION.selected >= 2 then
+				table.remove(INSPECTION.selected, 1)
+				INSPECTION.match_found = false
+				INSPECTION.match_reason = nil
+			end
+			-- Add new selection
+			table.insert(INSPECTION.selected, hs)
+			PLAY_SFX("inspect_highlight")
+
+			-- If 2 selected, run discrepancy check
+			if #INSPECTION.selected == 2 then
+				if CHECK_DISCREPANCY then
+					CHECK_DISCREPANCY(INSPECTION.selected[1], INSPECTION.selected[2])
+				end
+			end
+			return true
+		end
+	end
+
+	-- If tap was on upper counter shelf (y <= 67), check if user tapped a document resting on shelf
+	if tx > 0 and ty <= 67 then
+		for i = 1, #DESKTOP do
+			local k = DESKTOP[i]
+			local d = ITEM_BY_KEY and ITEM_BY_KEY[k]
+			if d and d.now == 1 and d.y >= 0 then
+				local w2 = (d.tex2 and Graphics.getImageWidth(d.tex2)) or 68
+				local h2 = (d.tex2 and Graphics.getImageHeight(d.tex2)) or 27
+				if tx >= d.x and tx <= d.x + w2 and ty >= d.y and ty <= d.y + h2 then
+					d.now = 0
+					d.y = 80
+					d.x = math.min(180, math.max(10, tx - 60))
+					PLAY_SFX("paper_dragstop")
+					return true
+				end
+			end
+		end
+	end
+
+	return false
+end
+
+--------------------------------------------------------------------------------
+-- INSPECTION MODE: DISCREPANCY CHECK ENGINE
+--------------------------------------------------------------------------------
+
+local function PARSE_DATE_NUM(str)
+	if not str or type(str) ~= "string" or #str < 10 then return nil end
+	local d = tonumber(string.sub(str, 1, 2))
+	local m = tonumber(string.sub(str, 4, 5))
+	local y = tonumber(string.sub(str, 7, 10))
+	if d and m and y then
+		return y * 10000 + m * 100 + d
+	end
+	return nil
+end
+
+function CHECK_DISCREPANCY(h1, h2)
+	if not h1 or not h2 or not PERSON then return false end
+	if h1.id == h2.id then return false end
+
+	local c1, c2 = h1.cat, h2.cat
+	if c1 > c2 then
+		c1, c2 = c2, c1
+		h1, h2 = h2, h1
+	end
+
+	local match = false
+	local wrong_id = nil
+	local special_key = nil
+
+	local day_cfg = IS_STORY_MODE and GET_DAY_CONFIG(CURRENT_DAY)
+
+	-- 1. Expired date vs Today's date
+	if c1 == "EXP_DATE" and c2 == "TODAY_DATE" then
+		local cur_d, cur_m, cur_y = GET_CURRENT_GAME_DATE()
+		local today_num = cur_y * 10000 + cur_m * 100 + cur_d
+		local exp_str = nil
+		local is_permit = false
+
+		if h1.doc == "PASSPORT" or h2.doc == "PASSPORT" then
+			exp_str = PERSON.passEXP
+		elseif h1.doc == "ENTRYPERMIT" or h2.doc == "ENTRYPERMIT" then
+			exp_str = PERSON.permitenterby
+			is_permit = true
+		elseif h1.doc == "WORKPASS" or h2.doc == "WORKPASS" then
+			exp_str = PERSON.WORKPASSuntil
+		elseif h1.doc == "ENTRYTICKET" or h2.doc == "ENTRYTICKET" then
+			exp_str = PERSON.ticketEXP
+		end
+
+		local exp_num = PARSE_DATE_NUM(exp_str)
+		if exp_num and exp_num < today_num then
+			match = true
+			wrong_id = is_permit and 15 or 14
+		end
+
+	-- 2. Name mismatch across documents
+	elseif c1 == "NAME" and c2 == "NAME" and h1.doc ~= h2.doc then
+		local function get_doc_name(doc)
+			if doc == "PASSPORT" then return PERSON.name
+			elseif doc == "ENTRYPERMIT" then return PERSON.permitname
+			elseif doc == "IDCARD" then
+				return tostring((PERSON.idcardfirstname or "") .. " " .. (PERSON.idcardlastname or ""))
+			elseif doc == "WORKPASS" then return PERSON.WORKPASSholder
+			end
+			return nil
+		end
+		local n1 = get_doc_name(h1.doc)
+		local n2 = get_doc_name(h2.doc)
+		if n1 and n2 and n1 ~= n2 then
+			match = true
+			wrong_id = 7
+		end
+
+	-- 3. ID Number mismatch across documents
+	elseif c1 == "ID_NUM" and c2 == "ID_NUM" and h1.doc ~= h2.doc then
+		local function get_doc_id(doc)
+			if doc == "PASSPORT" then return tostring(PERSON.ID or "")
+			elseif doc == "ENTRYPERMIT" then return tostring(PERSON.permitid or "")
+			end
+			return nil
+		end
+		local id1 = get_doc_id(h1.doc)
+		local id2 = get_doc_id(h2.doc)
+		if id1 and id2 and id1 ~= id2 then
+			match = true
+			wrong_id = 9
+		end
+
+	-- 4. DOB mismatch across documents (Passport vs ID Card)
+	elseif c1 == "DOB" and c2 == "DOB" and h1.doc ~= h2.doc then
+		if PERSON.DOB and PERSON.idcardDOB and PERSON.DOB ~= PERSON.idcardDOB then
+			match = true
+			wrong_id = 4
+		end
+
+	-- 5. Non-matching Photo (Entrant Face vs Passport/ID Photo)
+	elseif (c1 == "FACE" and c2 == "PHOTO") or (c1 == "PHOTO" and c2 == "FACE") then
+		if PERSON.face and PERSON.realface and PERSON.face ~= PERSON.realface then
+			match = true
+			wrong_id = 12
+		end
+
+	-- 6. Sex / Gender mismatch (Entrant Face appearance vs Document Gender)
+	elseif (c1 == "FACE" and c2 == "GENDER") or (c1 == "GENDER" and c2 == "FACE") then
+		local real_face = PERSON.realface or PERSON.face or 1
+		local appearance_gender = ((real_face >= 1 and real_face <= 4) or (real_face >= 29 and real_face <= 44)) and "F" or "M"
+		if PERSON.GNDR and PERSON.GNDR ~= appearance_gender then
+			match = true
+			wrong_id = 8
+		end
+
+	-- 7. Height mismatch (Entrant vs ID Card)
+	elseif (c1 == "FACE" and c2 == "HEIGHT") or (c1 == "HEIGHT" and c2 == "HEIGHT" and h1.id ~= h2.id) then
+		if PERSON.idcardheight and PERSON.height and PERSON.idcardheight ~= PERSON.height then
+			match = true
+			wrong_id = 10
+		end
+
+	-- 8. Weight mismatch (Entrant vs ID Card)
+	elseif (c1 == "FACE" and c2 == "WEIGHT") or (c1 == "WEIGHT" and c2 == "WEIGHT" and h1.id ~= h2.id) then
+		if PERSON.idcardweight and PERSON.weight and PERSON.idcardweight ~= PERSON.weight then
+			match = true
+			wrong_id = 11
+		end
+
+	-- 9. Invalid Issuing City (City on Passport vs Nation/City)
+	elseif (c1 == "CITY" and (c2 == "NATION" or c2 == "CITY")) or (c2 == "CITY" and (c1 == "NATION" or c1 == "CITY" and h1.id ~= h2.id)) then
+		local valid_cities = FORDOCUMENT and PERSON.passport and FORDOCUMENT[PERSON.passport]
+		local is_fake = true
+		if valid_cities then
+			for _, vc in ipairs(valid_cities) do
+				if vc == PERSON.COL then
+					is_fake = false
+					break
+				end
+			end
+		end
+		if is_fake then
+			match = true
+			wrong_id = 5
+		end
+
+	-- 10. Forged / Invalid District (ID Card district vs Nation/District)
+	elseif c1 == "DISTRICT" or c2 == "DISTRICT" then
+		local is_valid = false
+		if DISTRICTS and PERSON.idcarddistrict then
+			for _, dist in ipairs(DISTRICTS) do
+				if dist == PERSON.idcarddistrict then
+					is_valid = true
+					break
+				end
+			end
+		end
+		if not is_valid then
+			match = true
+			wrong_id = 6
+		end
+
+	-- 11. Forged MOA Seal (Entry Permit vs Rulebook Page 8 or Rule)
+	elseif (c1 == "SEAL_MOA" and c2 == "SEAL_MOA" and h1.id ~= h2.id) or (c1 == "RULE_SEAL" and c2 == "SEAL_MOA") or (c1 == "SEAL_MOA" and c2 == "RULE_SEAL") then
+		if PERSON.permitMOA and PERSON.permitMOA > 2 then
+			match = true
+			wrong_id = 17
+		end
+
+	-- 12. Forged MOL Seal (Work Pass vs Rulebook Page 8 or Rule)
+	elseif (c1 == "SEAL_MOL" and c2 == "SEAL_MOL" and h1.id ~= h2.id) or (c1 == "RULE_SEAL" and c2 == "SEAL_MOL") or (c1 == "SEAL_MOL" and c2 == "RULE_SEAL") then
+		if PERSON.WORKPASSMOL and PERSON.WORKPASSMOL > 4 then
+			match = true
+			wrong_id = 16
+		end
+
+	-- 12b. Foreigner Restriction (Passport Nation vs Rulebook Day 1 Rule)
+	elseif (c1 == "NATION" and c2 == "RULE_FOREIGNERS") or (c2 == "NATION" and c1 == "RULE_FOREIGNERS") then
+		if day_cfg and not day_cfg.allow_foreigners and PERSON and PERSON.passport ~= 2 then
+			match = true
+			special_key = "foreigners"
+		end
+
+	-- 13. Duration Mismatch (Entry Permit duration vs Stated duration in transcript)
+	elseif c1 == "DURATION" or c2 == "DURATION" then
+		if PERSON.transcript_mismatch then
+			match = true
+			wrong_id = 18
+		end
+
+	-- 14. Diplomatic Sanctions / Embargo Violation
+	elseif (c1 == "NATION" or c2 == "NATION") and day_cfg and day_cfg.embargo_nation then
+		if GET_NATION_NAME(PERSON.passport) == day_cfg.embargo_nation then
+			match = true
+			special_key = "embargo"
+		end
+
+	-- 15. Wanted Fugitive match
+	elseif (c1 == "NAME" or c2 == "NAME" or c1 == "PHOTO" or c2 == "PHOTO" or c1 == "FACE" or c2 == "FACE") and day_cfg and day_cfg.wanted_name then
+		if PERSON.is_wanted or PERSON.name == day_cfg.wanted_name then
+			match = true
+			special_key = "wanted"
+		end
+
+	-- 16. Foreigners not allowed (Story Mode Day 1)
+	elseif (c1 == "NATION" or c2 == "NATION") and day_cfg and not day_cfg.allow_foreigners then
+		if PERSON.passport ~= 2 then
+			match = true
+			special_key = "foreigners"
+		end
+	end
+
+	-- Result processing
+	if match then
+		INSPECTION.match_found = true
+		INSPECTION.match_reason = special_key or wrong_id
+		INSPECTION.interrogated = false
+		INSPECTION.can_detain = false
+		INSPECTION.flash_timer = 20
+		PLAY_SFX("inspect_interrogateon")
+
+		-- Grave severity (eligible for DETAIN):
+		-- Counterfeits, fake seals, forged cities/districts, wrong photo, embargo, wanted
+		if wrong_id == 5 or wrong_id == 6 or wrong_id == 12 or wrong_id == 16 or wrong_id == 17 or special_key == "embargo" or special_key == "wanted" then
+			INSPECTION.is_grave = true
+		else
+			INSPECTION.is_grave = false
+		end
+		return true
+	else
+		-- Negative match (no discrepancy between the two items)
+		INSPECTION.match_found = false
+		INSPECTION.match_reason = nil
+		INSPECTION.is_grave = false
+		INSPECTION.flash_timer = 15
+		PLAY_SFX("inspect_unhighlight")
+		INSPECTION.selected = {}
+		return false
+	end
+end
+
+--------------------------------------------------------------------------------
+-- INSPECTION MODE: INTERROGATION & DETAIN MECHANICS
+--------------------------------------------------------------------------------
+
+function START_INTERROGATION()
+	if not INSPECTION.match_found or INSPECTION.interrogated or INSPECTION.interrogating then
+		return false
+	end
+
+	local reason = INSPECTION.match_reason
+	local accusation = nil
+	if INSPECTOR_ACCUSATIONS then
+		accusation = INSPECTOR_ACCUSATIONS[reason] or INSPECTOR_ACCUSATIONS.default
+	end
+	if not accusation then
+		accusation = "There is a discrepancy in your documents."
+	end
+
+	local pool = nil
+	if ENTRANT_RESPONSES then
+		pool = ENTRANT_RESPONSES[reason] or ENTRANT_RESPONSES.default
+	end
+	if not pool or #pool == 0 then
+		pool = { "I do not understand.", "There must be some mistake." }
+	end
+	local response = pool[math.random(1, #pool)]
+
+	table.insert(CHAT, accusation)
+	table.insert(CHATplace, 1)
+	local idx = #CHAT
+	CHATtime[idx] = Timer.getTime(CBtime)
+	CHATy[idx] = 103
+	local text_w = GPU_MeasureText(accusation, 7)
+	local bw = math.max(80, text_w + 6)
+	CHATw[idx] = bw
+	CHATx[idx] = 112
+	PLAY_SFX("speech_inspector")
+
+	INSPECTION.interrogating = true
+	INSPECTION.interrogation_queue = {
+		response = response,
+		delay = 60 -- 1 second at 60 fps
+	}
+	return true
+end
+
+function UPDATE_INSPECTION()
+	if INSPECTION.flash_timer and INSPECTION.flash_timer > 0 then
+		INSPECTION.flash_timer = INSPECTION.flash_timer - 1
+	end
+	if INSPECTION.line_timer then
+		INSPECTION.line_timer = (INSPECTION.line_timer + 1) % 60
+	end
+
+	if INSPECTION.interrogation_queue then
+		INSPECTION.interrogation_queue.delay = INSPECTION.interrogation_queue.delay - 1
+		if INSPECTION.interrogation_queue.delay <= 0 then
+			local resp = INSPECTION.interrogation_queue.response
+			table.insert(CHAT, resp)
+			table.insert(CHATplace, 2)
+			local idx = #CHAT
+			CHATtime[idx] = Timer.getTime(CBtime)
+			CHATy[idx] = 115
+			local text_w = GPU_MeasureText(resp, 7)
+			local bw = math.max(80, text_w + 6)
+			CHATw[idx] = bw
+			CHATx[idx] = 290 - bw
+			PLAY_SFX("speech_entrant")
+
+			INSPECTION.interrogation_queue = nil
+			INSPECTION.interrogating = false
+			INSPECTION.interrogated = true
+			if INSPECTION.is_grave then
+				INSPECTION.can_detain = true
+			end
+		end
+	end
+end
+
+function EXECUTE_DETAIN()
+	local day_cfg = IS_STORY_MODE and GET_DAY_CONFIG(CURRENT_DAY)
+	local has_embargo_violation = (day_cfg and day_cfg.embargo_nation and GET_NATION_NAME(PERSON.passport) == day_cfg.embargo_nation)
+	local has_wanted_violation = (day_cfg and day_cfg.wanted_name and (PERSON.is_wanted or PERSON.name == day_cfg.wanted_name))
+	local is_valid_detain = INSPECTION.is_grave and (
+		(WRONGCONST ~= "Nothing" and (WRONGCONST == WRONGTABLE[5] or WRONGCONST == WRONGTABLE[6] or WRONGCONST == WRONGTABLE[12] or WRONGCONST == WRONGTABLE[16] or WRONGCONST == WRONGTABLE[17]))
+		or has_embargo_violation
+		or has_wanted_violation
+	)
+
+	if not INSPECTION.can_detain or not INSPECTION.interrogated or not is_valid_detain then
+		-- Unlawful detention penalty
+		WRONGMANn = (WRONGMANn or 0) + 1
+		if IS_STORY_MODE then
+			DAY_MISTAKES_COUNT = (DAY_MISTAKES_COUNT or 0) + 1
+			DAY_INSPECTED_COUNT = (DAY_INSPECTED_COUNT or 0) + 1
+		end
+		local mistake_count = IS_STORY_MODE and DAY_MISTAKES_COUNT or WRONGMANn
+		local max_warnings = (CURRENT_DAY and CURRENT_DAY >= 3) and 1 or 2
+		if day_cfg and day_cfg.allowed_warnings ~= nil then
+			max_warnings = day_cfg.allowed_warnings
+		end
+
+		local penalty_text = "WARNING - NO PENALTY"
+		local penalty_pts = 0
+		if IS_STORY_MODE then
+			if mistake_count == max_warnings + 1 then
+				penalty_text = "PENALTY: 5 CREDITS"
+				penalty_pts = 5
+			elseif mistake_count > max_warnings + 1 then
+				penalty_text = "PENALTY: 10 CREDITS"
+				penalty_pts = 10
+			end
+		end
+
+		SPAWN_CITATION("UNLAWFUL DETENTION", penalty_text, MODEselect, penalty_pts, 0)
+	else
+		-- Lawful detention reward
+		table.insert(PENDING_REWARDS, {
+			delay = 600,
+			points = IS_STORY_MODE and 5 or plusPOINTS,
+			is_story = IS_STORY_MODE
+		})
+		if IS_STORY_MODE then
+			DAY_INSPECTED_COUNT = (DAY_INSPECTED_COUNT or 0) + 1
+		end
+	end
+
+	-- Authentic detain sequence
+	INSPECTION.detained = true
+	table.insert(CHAT, "Detain this person.")
+	table.insert(CHATplace, 1)
+	local idx = #CHAT
+	CHATtime[idx] = Timer.getTime(CBtime)
+	CHATy[idx] = 103
+	local text_w = GPU_MeasureText("Detain this person.", 7)
+	local bw = math.max(80, text_w + 6)
+	CHATw[idx] = bw
+	CHATx[idx] = 112
+	PLAY_SFX("speech_inspector")
+	PLAY_SFX("border_callguards")
+
+	-- Confiscate / clear all traveler documents from desk
+	local i = 1
+	while i <= #DESKTOP do
+		local k = DESKTOP[i]
+		if TRAVELER_DOCS[k] then
+			local d = ITEM_BY_KEY and ITEM_BY_KEY[k]
+			if d then
+				d.now = 1
+				d.y = -200
+				d.velocity = 0
+				d.gravity = 0
+			end
+			table.remove(DESKTOP, i)
+		else
+			i = i + 1
+		end
+	end
+
+	stamp = "DETAIN"
+	CheckPoint = 2
+
+	-- Reset inspection mode
+	RESET_INSPECTION()
+end
+
+--------------------------------------------------------------------------------
+-- INSPECTION MODE: VISUAL RENDERING PIPELINE
+--------------------------------------------------------------------------------
+
+local INSPECT_AMBER_BORDER = Color.new(255, 200, 60, 220)
+local INSPECT_AMBER_FILL   = Color.new(255, 200, 60, 45)
+local INSPECT_RED_BORDER   = Color.new(220, 50, 50, 240)
+local INSPECT_RED_FILL     = Color.new(220, 50, 50, 60)
+local INSPECT_DIM_DESK     = Color.new(0, 0, 0, 45)
+local INSPECT_ANCHOR_BG    = Color.new(35, 40, 35, 230)
+local INSPECT_ANCHOR_BD    = Color.new(110, 130, 110, 220)
+local INSPECT_ANCHOR_TXT   = Color.new(170, 190, 170)
+local INSPECT_BTN_BG       = Color.new(25, 28, 25, 240)
+local INSPECT_BTN_BORDER   = Color.new(220, 220, 210, 240)
+local INSPECT_DETAIN_BG    = Color.new(150, 25, 25, 240)
+local INSPECT_DETAIN_BD    = Color.new(240, 90, 90, 250)
+
+function DRAW_INSPECTION_OVERLAY()
+	-- 1. Inspection Toggle Button (bottom-right: x = 288, y = 216, w = 32, h = 24)
+	if INSPECTION.active then
+		if INSPECT_BTN_CLOSE then
+			Graphics.drawImage(288, 216, INSPECT_BTN_CLOSE)
+		else
+			Graphics.fillRect(286, 310, 206, 230, Color.new(45, 38, 20, 220))
+			Graphics.fillEmptyRect(286, 310, 206, 230, INSPECT_AMBER_BORDER)
+		end
+	else
+		if INSPECT_BTN_OPEN then
+			Graphics.drawImage(288, 216, INSPECT_BTN_OPEN)
+		else
+			Graphics.fillRect(286, 310, 206, 230, Color.new(20, 20, 20, 160))
+			Graphics.fillEmptyRect(286, 310, 206, 230, Color.new(100, 100, 95, 180))
+		end
+		-- If inspection is inactive, do not draw active overlay elements
+		return
+	end
+
+	-- 2. Darkening overlay over desk surface (y = 67 to 240)
+	Graphics.fillRect(0, 320, 67, 240, INSPECT_DIM_DESK)
+
+	-- 3. Top-screen data anchors on upper counter shelf
+	if INSPECTION_ANCHORS then
+		for _, a in ipairs(INSPECTION_ANCHORS) do
+			Graphics.fillRect(a.x, a.x + a.w, a.y, a.y + a.h, INSPECT_ANCHOR_BG)
+			Graphics.fillEmptyRect(a.x, a.x + a.w, a.y, a.y + a.h, INSPECT_ANCHOR_BD)
+			GPU_DrawText(math.floor(a.x + a.w / 2), a.y + 4, a.label or "ANCHOR", INSPECT_ANCHOR_TXT, "c", 320, SMALL_FONT, 7)
+		end
+	end
+
+	-- 4. Connecting Line between selected points
+	if #INSPECTION.selected == 2 then
+		local s1 = INSPECTION.selected[1]
+		local s2 = INSPECTION.selected[2]
+		local cx1 = math.floor(s1.x + s1.w / 2)
+		local cy1 = math.floor(s1.y + s1.h / 2)
+		local cx2 = math.floor(s2.x + s2.w / 2)
+		local cy2 = math.floor(s2.y + s2.h / 2)
+
+		local line_col = INSPECTION.match_found and INSPECT_RED_BORDER or INSPECT_AMBER_BORDER
+		local dx = cx2 - cx1
+		local dy = cy2 - cy1
+		local dist = math.sqrt(dx * dx + dy * dy)
+		local steps = math.floor(dist / 5)
+		if steps > 0 then
+			for s = 0, steps do
+				local phase = (s + math.floor((INSPECTION.line_timer or 0) / 4)) % 2
+				if phase == 0 or INSPECTION.match_found then
+					local t = s / steps
+					local px = math.floor(cx1 + dx * t)
+					local py = math.floor(cy1 + dy * t)
+					Graphics.fillRect(px, px + 2, py, py + 2, line_col)
+				end
+			end
+		end
+	end
+
+	-- 5. Highlight boxes for selected hotspots
+	for _, sel in ipairs(INSPECTION.selected) do
+		local fill_col = INSPECTION.match_found and INSPECT_RED_FILL or INSPECT_AMBER_FILL
+		local border_col = INSPECTION.match_found and INSPECT_RED_BORDER or INSPECT_AMBER_BORDER
+		Graphics.fillRect(sel.x, sel.x + sel.w, sel.y, sel.y + sel.h, fill_col)
+		Graphics.fillEmptyRect(sel.x, sel.x + sel.w, sel.y, sel.y + sel.h, border_col)
+		Graphics.fillEmptyRect(sel.x - 1, sel.x + sel.w + 1, sel.y - 1, sel.y + sel.h + 1, border_col)
+	end
+
+	-- 6. Negative Match Flash Animation
+	if INSPECTION.flash_timer and INSPECTION.flash_timer > 0 and not INSPECTION.match_found then
+		local flash_alpha = math.min(100, INSPECTION.flash_timer * 7)
+		Graphics.fillRect(0, 320, 67, 240, Color.new(220, 40, 40, flash_alpha))
+	end
+
+	-- 7. Action Buttons (INTERROGATE and DETAIN)
+	-- INTERROGATE button
+	if INSPECTION.match_found and not INSPECTION.interrogated and not INSPECTION.interrogating then
+		Graphics.fillRect(95, 192, 175, 205, INSPECT_BTN_BG)
+		Graphics.fillEmptyRect(95, 192, 175, 205, INSPECT_BTN_BORDER)
+		Graphics.fillEmptyRect(97, 190, 177, 203, INSPECT_BTN_BORDER)
+		GPU_DrawText(143, 186, "INTERROGATE (X)", Color.new(240, 240, 230), "c", 320, SMALL_FONT, 7)
+	end
+
+	-- DETAIN button (authentic 3-state sprite: 71x30 per slice)
+	-- State 0 (sy=0): Active / Ready (Red light)
+	-- State 1 (sy=30): Inactive / Locked (Grey light)
+	-- State 2 (sy=60): Pressed / Activated (Bright glowing amber light)
+	if INSPECTION.can_detain and DETAIN_BTN_TEX then
+		local sy = 0 -- State 0: Active / Ready
+		if INSPECTION.detained or TOUCH == "DETAIN_BTN" then
+			sy = 60 -- State 2: Pressed / Activated
+		end
+		Graphics.drawPartialImage(200, 175, 0, sy, 71, 30, DETAIN_BTN_TEX)
+	end
+end
+
 function LOAD_IMAGE(word,key)
 	-- [PERF] Conservative off-screen cull: skip draw entirely if the document
 	-- is fully outside the 320x240 touch screen. Max document size is 238x162
@@ -2245,12 +2985,14 @@ function DATEGENERATOR(validornat)
 end
 function RANDOMIZE()
 	local wrong = 0
+	if RESET_INSPECTION then RESET_INSPECTION() end
 	for i=1,#DESKTOP do table.remove(DESKTOP,1) end
 	for i=1,#ALLITEMS do table.remove(ALLITEMS,1) end
-	for i=1,#CHAT do table.remove(CHAT,1) end
-	for i=1,#CHATplace do table.remove(CHATplace,1) end
-	CHAT_U = {}
-	CHAT_W = {}
+	CLEAR_CHAT()
+	if CBtime then
+		Timer.reset(CBtime)
+		Timer.resume(CBtime)
+	end
 	table.insert(DESKTOP,1,"TRANSCRIPT")
 	table.insert(ALLITEMS,1,TRANSCRIPT)
 	IDCARD.x=145
@@ -2620,41 +3362,90 @@ function HEIGHTGENERATOR()
 	end
 	return a
 end
+function DRAW_SPEECH_BUBBLE(x, y, w)
+	if w <= 80 and x >= 0 then
+		Graphics.drawImage(x, y, SB)
+	else
+		local x_start = math.max(0, x)
+		local x_end = math.min(400, x + w - 1)
+		if x_end > x_start then
+			local r0_s = math.max(0, x + 2)
+			local r0_e = math.min(400, x + w - 3)
+			if r0_e > r0_s then Graphics.fillRect(r0_s, r0_e, y, y + 10, DOCUMENTS_WHITE) end
+
+			local r1_s = math.max(0, x + 1)
+			local r1_e = math.min(400, x + w - 2)
+			if r1_e > r1_s then Graphics.fillRect(r1_s, r1_e, y + 1, y + 9, DOCUMENTS_WHITE) end
+
+			Graphics.fillRect(x_start, x_end, y + 2, y + 8, DOCUMENTS_WHITE)
+		end
+	end
+end
+
 function DIALOG_SYSTEM()
-	for i=1, #CHAT do
-		if FACE.x==126 and SWITCHER==0 then
-			if  Timer.getTime(CBtime)>1000*(i-1) then
-				if CHATplace[i]==2 then
-					if CHATx[i] == nil then
-						PLAY_SFX("speech_entrant")
-					end
-					CHATx[i] = CHATx[i] or 210
-					if CHATx[i] < 290 then
-						Graphics.drawImage(CHATx[i], 103+(i-1)*12, SB)
-						GPU_DrawText(CHATx[i]+2,106+(i-1)*12,CHAT[i] ,BROWN2,"l",400,SMALL_FONT,7)
-						if Timer.getTime(CBtime)>3000+1000*(i-1) then
-							CHATx[i] = CHATx[i] + 5
-						end
-					end
-					else
-					if CHATx[i] == nil then
-						PLAY_SFX("speech_inspector")
-					end
-					CHATx[i] = CHATx[i] or 112
-					if CHATx[i] > 32 then
-						Graphics.drawImage(CHATx[i], 103+(i-1)*12, SB)
-						GPU_DrawText(CHATx[i]+2,106+(i-1)*12,CHAT[i] ,BROWN2,"l",400,SMALL_FONT,7)
-						if Timer.getTime(CBtime)>3000+1000*(i-1) then
-							CHATx[i] = CHATx[i] - 5
-						end
+	if not (FACE.x == 126 and SWITCHER == 0) then
+		if CBtime then
+			Timer.reset(CBtime)
+			Timer.resume(CBtime)
+		end
+		for i = 1, #CHAT do
+			CHATx[i] = nil
+			CHATtime[i] = nil
+			if CHATframe then CHATframe[i] = nil end
+		end
+		return
+	end
+
+	if CBtime then
+		Timer.resume(CBtime)
+	end
+	local current_t = Timer.getTime(CBtime)
+	for i = 1, #CHAT do
+		if CHATtime[i] == nil then
+			CHATtime[i] = 1000 * (i - 1)
+		end
+		local should_start = (current_t >= CHATtime[i]) or (i > 1 and CHATframe and CHATframe[i - 1] and CHATframe[i - 1] >= 60) or (i == 1)
+		if should_start then
+			if CHATframe then
+				CHATframe[i] = (CHATframe[i] or 0) + 1
+			end
+			local elapsed = current_t - CHATtime[i]
+			local y = CHATy[i] or (103 + (i - 1) * 12)
+			local place = CHATplace[i] or 1
+
+			local bw = CHATw[i]
+			if bw == nil then
+				local text_w = GPU_MeasureText(CHAT[i], 7)
+				bw = math.max(80, text_w + 6)
+				CHATw[i] = bw
+			end
+
+			local is_timed_out = (elapsed >= 3000) or (CHATframe and CHATframe[i] and CHATframe[i] >= 180)
+
+			if place == 2 then
+				if CHATx[i] == nil then
+					CHATx[i] = 290 - bw
+					PLAY_SFX("speech_entrant")
+				end
+				if CHATx[i] < 290 then
+					DRAW_SPEECH_BUBBLE(CHATx[i], y, bw)
+					GPU_DrawText(CHATx[i] + 2, y + 3, CHAT[i], BROWN2, "l", 400, SMALL_FONT, 7)
+					if is_timed_out then
+						CHATx[i] = CHATx[i] + 5
 					end
 				end
-			end
 			else
-			if SWITCHER==1 then
-				else
-				Timer.reset(CBtime)
-				CHATx[i] = nil
+				if CHATx[i] == nil then
+					CHATx[i] = 112
+					PLAY_SFX("speech_inspector")
+				end
+				if CHATx[i] + bw > 112 then
+					DRAW_SPEECH_BUBBLE(CHATx[i], y, bw)
+					GPU_DrawText(CHATx[i] + 2, y + 3, CHAT[i], BROWN2, "l", 400, SMALL_FONT, 7)
+					if is_timed_out then
+						CHATx[i] = CHATx[i] - 5
+					end
+				end
 			end
 		end
 	end
@@ -2845,6 +3636,9 @@ function CHECK_EMPTYTABLE()
 		elseif stamp == "NO" and CheckPoint==2 then
 			FACE.x=FACE.x - 2.5
 			FACE.y=-(5*math.cos(15*(FACE.x-126)))+109
+		elseif stamp == "DETAIN" and CheckPoint==2 then
+			FACE.x=FACE.x - 4.0
+			FACE.y=-(5*math.cos(15*(FACE.x-126)))+109
 		end
 	end
 end
@@ -2902,6 +3696,7 @@ while true do
 			-- so the shift clock (180s) does not advance while the console is asleep
 			if menu == 2 then
 				if GameTIME then Timer.pause(GameTIME) end
+				if CBtime then Timer.pause(CBtime) end
 				PAUSE_AUDIO()
 				menu = "Pause"
 			else
@@ -3001,16 +3796,54 @@ while true do
 				end
 			end
 		end
-		for i=1, #DESKTOP do
-			if TOUCH == DESKTOP[i] then 
-				table.remove(DESKTOP,i) 
-				table.insert(DESKTOP,1,TOUCH)
+		if INSPECTION.active then
+			if TOUCH == "ACTIVE" and TOUCHx > 0 and TOUCHy > 0 then
+				-- Check inspection toggle button (x=288, y=216, w=32, h=24)
+				if TOUCHx >= 284 and TOUCHx <= 320 and TOUCHy >= 212 and TOUCHy <= 240 then
+					INSPECTION.active = false
+					INSPECTION.selected = {}
+					INSPECTION.match_found = false
+					INSPECTION.match_reason = nil
+					PLAY_SFX("inspect_close")
+					TOUCH = "INSPECT_TOGGLE"
+				-- Check interrogate button (x=95..192, y=175..205)
+				elseif INSPECTION.match_found and not INSPECTION.interrogated and not INSPECTION.interrogating and TOUCHx >= 95 and TOUCHx <= 195 and TOUCHy >= 173 and TOUCHy <= 207 then
+					START_INTERROGATION()
+					TOUCH = "INTERROGATE_BTN"
+				-- Check detain button (x=200..271, y=175..205)
+				elseif INSPECTION.can_detain and TOUCHx >= 198 and TOUCHx <= 273 and TOUCHy >= 173 and TOUCHy <= 207 then
+					EXECUTE_DETAIN()
+					TOUCH = "DETAIN_BTN"
+				else
+					-- Route to hotspot selection
+					if INSPECTION_TOUCH(TOUCHx, TOUCHy) then
+						TOUCH = "INSPECT_HOTSPOT"
+					end
+				end
 			end
-		end
-		STAMP_CODE()
-		for i = 1, #DESKTOP do
-			local itm = ITEM_BY_KEY[DESKTOP[i]]
-			if itm then TOUCH_CHECK(itm, itm.key) end
+		else
+			-- Normal inspection inactive: check toggle button (x=288, y=216, w=32, h=24)
+			if TOUCH == "ACTIVE" and TOUCHx >= 284 and TOUCHx <= 320 and TOUCHy >= 212 and TOUCHy <= 240 then
+				INSPECTION.active = true
+				if STAMP.state == "OPENED" then
+					STAMP.state = "CLOSED"
+					STAMP.velocity = 0
+				end
+				PLAY_SFX("inspect_open")
+				TOUCH = "INSPECT_TOGGLE"
+			else
+				for i=1, #DESKTOP do
+					if TOUCH == DESKTOP[i] then 
+						table.remove(DESKTOP,i) 
+						table.insert(DESKTOP,1,TOUCH)
+					end
+				end
+				STAMP_CODE()
+				for i = 1, #DESKTOP do
+					local itm = ITEM_BY_KEY[DESKTOP[i]]
+					if itm then TOUCH_CHECK(itm, itm.key) end
+				end
+			end
 		end
 		if TOUCH~="ACTIVE" and TOUCHx==0 and TOUCHy==0 then
 			TOUCH="ACTIVE"
@@ -3037,6 +3870,7 @@ while true do
 			Graphics.drawPartialImage(STAMP.x+160,STAMP.green, 75, 82, 75, 87, STMP_SPRITE)
 		end
 		Graphics.drawPartialImage(STAMP.x,STAMP.y+47, 0, 46, 280, 36, STMP_SPRITE)
+		DRAW_INSPECTION_OVERLAY()
 		if FADE_ALPHA > 0 then
 			Graphics.fillRect(0, 320, 0, 240, Color.new(0, 0, 0, math.floor(math.min(255, math.max(0, FADE_ALPHA)))))
 		end
@@ -3095,6 +3929,7 @@ while true do
 			end
 		end
 		CHECK_EMPTYTABLE()
+		UPDATE_INSPECTION()
 		CAGE_MOVE()
 		MAP_MOVE()
 		if Options["Dialog"]==1 then
@@ -3260,8 +4095,34 @@ while true do
 				Timer.pause(GameTIME)
 			end
 		end
+		if Controls.check(pad, KEY_Y) and not Controls.check(oldpad, KEY_Y) and FADE_STATE == "NONE" then
+			if INSPECTION.active then
+				INSPECTION.active = false
+				INSPECTION.selected = {}
+				INSPECTION.match_found = false
+				INSPECTION.match_reason = nil
+				PLAY_SFX("inspect_close")
+			else
+				INSPECTION.active = true
+				if STAMP.state == "OPENED" then
+					STAMP.state = "CLOSED"
+					STAMP.velocity = 0
+				end
+				PLAY_SFX("inspect_open")
+			end
+		end
+
+		if Controls.check(pad, KEY_X) and not Controls.check(oldpad, KEY_X) and FADE_STATE == "NONE" and INSPECTION.active then
+			if INSPECTION.can_detain then
+				EXECUTE_DETAIN()
+			elseif INSPECTION.match_found and not INSPECTION.interrogated and not INSPECTION.interrogating then
+				START_INTERROGATION()
+			end
+		end
+
 		if Controls.check(pad,KEY_START) and not Controls.check(oldpad,KEY_START) and FADE_STATE=="NONE" then
 			Timer.pause(GameTIME)
+			if CBtime then Timer.pause(CBtime) end
 			PAUSE_AUDIO()
 			menu="Pause"
 		end
@@ -3391,6 +4252,7 @@ while true do
 		end
 		if Controls.check(pad, KEY_START) and not Controls.check(oldpad, KEY_START) then
 			Timer.resume(GameTIME)
+			if CBtime then Timer.resume(CBtime) end
 			RESUME_AUDIO()
 			menu = 2
 		end
@@ -3567,72 +4429,29 @@ while true do
 		if BULLETIN_BTM_TEX == nil then
 			BULLETIN_BTM_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_BULLETIN_BTM.png")
 		end
-		if CURRENT_DAY <= 4 then
-			if NEWS_TEX == nil or NEWS_TEX_DAY ~= CURRENT_DAY then
-				if NEWS_TEX then Graphics.freeImage(NEWS_TEX) end
-				local news_path = System.currentDirectory().."ASSETS/NEWS_DAY"..CURRENT_DAY..".png"
-				NEWS_TEX = Graphics.loadImage(news_path)
-				if NEWS_TEX == nil then
-					NEWS_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_BULLETIN_TOP.png")
-				end
-				NEWS_TEX_DAY = CURRENT_DAY
-			end
-		else
-			if NEWS_TEX then
-				Graphics.freeImage(NEWS_TEX)
-				NEWS_TEX = nil
-				NEWS_TEX_DAY = nil
+		if NEWS_TEX == nil then
+			NEWS_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/News.png")
+			if NEWS_TEX == nil then
+				NEWS_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_BULLETIN_TOP.png")
 			end
 		end
 
-		-- [TOP SCREEN: AUTHENTIC NEWSPAPER - THE TRUTH OF ARSTOTZKA / ARSTOTZKAN TRIBUNE]
+		-- [TOP SCREEN: AUTHENTIC NEWSPAPER - THE TRUTH OF ARSTOTZKA]
 		Graphics.initBlend(TOP_SCREEN)
-		if CURRENT_DAY <= 4 and NEWS_TEX then
-			Graphics.drawImage(0, 0, NEWS_TEX)
+		-- Vintage dark desk border around newspaper
+		Graphics.fillRect(0, 400, 0, 240, Color.new(24, 22, 21))
+		
+		local news_x = 17
+		local news_y = 10
+		
+		-- Shadow behind newspaper
+		Graphics.fillRect(news_x + 3, 365, news_y + 3, 220, Color.new(14, 12, 11))
+		
+		if NEWS_TEX then
+			Graphics.drawImage(news_x, news_y, NEWS_TEX)
 		else
-			-- Procedural Newspaper: "THE ARSTOTZKAN TRIBUNE"
-			Graphics.fillRect(0, 400, 0, 240, Color.new(22, 19, 18))
-			-- Newspaper sheet background
-			Graphics.fillRect(12, 388, 10, 230, Color.new(228, 220, 206))
-			Graphics.fillEmptyRect(12, 388, 10, 230, Color.new(65, 55, 45))
-			Graphics.fillEmptyRect(14, 386, 12, 228, Color.new(140, 130, 115))
-
-			-- Newspaper Header Banner
-			Graphics.fillRect(16, 384, 14, 46, Color.new(45, 40, 38))
-			GPU_DrawText(200, 18, "THE ARSTOTZKAN TRIBUNE", Color.new(245, 240, 230), "c", 400, NORMAL_FONT, 8)
-			GPU_DrawText(200, 34, "THE VOICE OF THE MINISTRY  |  ISSUE #" .. CURRENT_DAY .. "  |  " .. day_cfg.date, Color.new(200, 190, 175), "c", 400, SMALL_FONT, 7)
-
-			-- Headline divider line
-			Graphics.fillRect(20, 380, 52, 54, Color.new(50, 40, 35))
-
-			-- Main Headline Box
-			GPU_DrawText(200, 62, day_cfg.headline, Color.new(20, 15, 15), "c", 400, NORMAL_FONT, 8)
-			GPU_DrawText(200, 80, day_cfg.subline, Color.new(70, 55, 50), "c", 400, SMALL_FONT, 7)
-
-			-- Separator
-			Graphics.fillRect(40, 360, 94, 95, Color.new(120, 110, 100))
-
-			-- Additional newspaper articles / flavor
-			if day_cfg.embargo_nation then
-				GPU_DrawText(25, 104, "DIPLOMATIC SANCTIONS IN EFFECT", Color.new(140, 30, 30), "l", 400, NORMAL_FONT, 8)
-				GPU_DrawText(25, 122, "Ministry of Foreign Affairs has suspended all entry privileges", Color.new(50, 40, 40), "l", 400, SMALL_FONT, 7)
-				GPU_DrawText(25, 136, "for citizens originating from " .. day_cfg.embargo_nation .. ".", Color.new(50, 40, 40), "l", 400, SMALL_FONT, 7)
-				GPU_DrawText(25, 150, "Inspectors must deny entry immediately under penalty of law.", Color.new(80, 50, 50), "l", 400, SMALL_FONT, 7)
-			else
-				GPU_DrawText(25, 104, "SECURITY PROTOCOLS UPDATED", Color.new(35, 30, 30), "l", 400, NORMAL_FONT, 8)
-				GPU_DrawText(25, 122, "State security agencies have increased checkpoint surveillance.", Color.new(50, 40, 40), "l", 400, SMALL_FONT, 7)
-				GPU_DrawText(25, 136, "Inspectors are reminded to verify all paperwork rigorously.", Color.new(50, 40, 40), "l", 400, SMALL_FONT, 7)
-				GPU_DrawText(25, 150, "Discrepancies in applicant statements will not be tolerated.", Color.new(80, 50, 50), "l", 400, SMALL_FONT, 7)
-			end
-
-			if day_cfg.wanted_name then
-				Graphics.fillRect(25, 375, 168, 196, Color.new(60, 20, 20))
-				Graphics.fillEmptyRect(25, 375, 168, 196, Color.new(120, 40, 40))
-				GPU_DrawText(200, 172, "WANTED BY STATE POLICE: " .. day_cfg.wanted_name, Color.new(255, 220, 220), "c", 400, SMALL_FONT, 7)
-				GPU_DrawText(200, 184, "DENY ENTRY IMMEDIATELY UPON PRESENTATION OF PAPERS", Color.new(240, 180, 180), "c", 400, SMALL_FONT, 7)
-			end
-
-			GPU_DrawText(200, 210, "GLORY TO ARSTOTZKA.", Color.new(140, 25, 25), "c", 400, NORMAL_FONT, 8)
+			Graphics.fillRect(news_x, 365, news_y, 220, Color.new(203, 202, 187))
+			Graphics.fillEmptyRect(news_x, 365, news_y, 220, Color.new(96, 95, 88))
 		end
 		screenshotmake()
 		Graphics.termBlend()
@@ -3642,43 +4461,42 @@ while true do
 		if BULLETIN_BTM_TEX then
 			Graphics.drawImage(0, 0, BULLETIN_BTM_TEX)
 		else
-			Graphics.fillRect(0, 320, 0, 240, Color.new(28, 24, 24))
-			-- Paper document background with double border
-			Graphics.fillRect(10, 310, 8, 232, Color.new(236, 230, 218))
-			Graphics.fillEmptyRect(10, 310, 8, 232, Color.new(110, 90, 70))
-			Graphics.fillEmptyRect(12, 308, 10, 230, Color.new(170, 150, 130))
+			Graphics.fillRect(0, 320, 0, 240, Color.new(24, 22, 21))
+			-- Paper document background with double border matching News.png palette
+			Graphics.fillRect(8, 304, 6, 226, Color.new(203, 202, 187))
+			Graphics.fillEmptyRect(8, 304, 6, 226, Color.new(96, 95, 88))
 			-- Crimson header banner
-			Graphics.fillRect(12, 308, 10, 42, Color.new(82, 34, 34))
+			Graphics.fillRect(20, 298, 17, 46, Color.new(82, 34, 34))
 		end
 		
-		GPU_DrawText(160, 14, "MINISTRY OF ADMISSION", WHITE, "c", 320, NORMAL_FONT, 8)
-		GPU_DrawText(160, 28, "OFFICIAL DIRECTIVE - DAY "..CURRENT_DAY.." - "..day_cfg.date, Color.new(230, 210, 210), "c", 320, SMALL_FONT, 7)
+		GPU_DrawText(160, 20, "MINISTRY OF ADMISSION", Color.new(239, 237, 220), "c", 320, NORMAL_FONT, 8)
+		GPU_DrawText(160, 34, "OFFICIAL DIRECTIVE - DAY "..CURRENT_DAY.." - "..day_cfg.date, Color.new(239, 237, 220), "c", 320, SMALL_FONT, 7)
 		
 		-- Subheader
-		GPU_DrawText(20, 48, "ARSTOTZKA BORDER CONTROL - GRESTIN CHECKPOINT", Color.new(70, 60, 50), "l", 320, SMALL_FONT, 7)
+		GPU_DrawText(24, 48, "ARSTOTZKA BORDER CONTROL - GRESTIN CHECKPOINT", Color.new(96, 95, 88), "l", 320, SMALL_FONT, 7)
 		if BULLETIN_BTM_TEX == nil then
-			Graphics.fillRect(20, 300, 58, 60, Color.new(120, 100, 80))
+			Graphics.fillRect(24, 296, 56, 58, Color.new(167, 165, 154))
 		end
 		
-		-- Directives / Rules
-		local rule_y = 64
+		-- Directives / Rules (as present in day_cfg.bulletin_rules)
+		local rule_y = 65
 		for idx, rule in ipairs(day_cfg.bulletin_rules) do
 			if BULLETIN_BTM_TEX == nil then
-				Graphics.fillRect(20, 24, rule_y + 3, rule_y + 7, Color.new(82, 34, 34))
+				Graphics.fillRect(22, 25, rule_y + 1, rule_y + 5, Color.new(82, 34, 34))
 			end
-			local rule_col = Color.new(20, 20, 20)
+			local rule_col = Color.new(96, 95, 88)
 			if string.find(rule, "DENY ALL") or string.find(rule, "WANTED") then
-				rule_col = Color.new(140, 25, 25)
+				rule_col = Color.new(140, 35, 35)
 			end
 			GPU_DrawText(28, rule_y, rule, rule_col, "l", 320, SMALL_FONT, 7)
-			rule_y = rule_y + 16
+			rule_y = rule_y + 18
 		end
 		
 		-- Shift info line
 		if BULLETIN_BTM_TEX == nil then
-			Graphics.fillRect(20, 300, 148, 150, Color.new(180, 160, 140))
+			Graphics.fillRect(24, 296, 150, 152, Color.new(167, 165, 154))
 		end
-		GPU_DrawText(160, 149, "SHIFT: 09:00 - 18:00  |  PENALTIES FOR CITATIONS", Color.new(80, 70, 60), "c", 320, SMALL_FONT, 7)
+		GPU_DrawText(160, 150, "SHIFT: 09:00 - 18:00  |  PENALTIES FOR CITATIONS", Color.new(115, 110, 102), "c", 320, SMALL_FONT, 7)
 		
 		-- Custom Checkpoint Button (ASSETS/CHECKPOINTbutton.png)
 		if OPENCHECKPOINT_TEX == nil and not OPENCHECKPOINT_TRIED then
@@ -3727,16 +4545,16 @@ while true do
 			else
 				Graphics.drawPartialImage(btn_x, btn_y, 0, 0, btn_w, btn_h, OPENCHECKPOINT_TEX)
 			end
-			GPU_DrawText(160, 198, "PRESS (A) OR TAP TO OPEN", Color.new(110, 100, 90), "c", 320, SMALL_FONT, 7)
+			GPU_DrawText(160, 198, "PRESS (A) OR TAP TO OPEN", Color.new(115, 110, 102), "c", 320, SMALL_FONT, 7)
 		else
-			local btn_text_col = Color.new(35, 30, 30)
+			local btn_text_col = Color.new(96, 95, 88)
 			if DAY_INTRO_BTN.touched and TOUCHx>0 and TOUCHy>0 then
-				btn_text_col = Color.new(90, 36, 36)
+				btn_text_col = Color.new(140, 35, 35)
 			end
 			GPU_DrawText(160, 182, "[ OPEN CHECKPOINT (A) ]", btn_text_col, "c", 320, NORMAL_FONT, 8)
 		end
 		
-		GPU_DrawText(160, 218, "PRESS (B) FOR MENU", Color.new(100, 90, 80), "c", 320, SMALL_FONT, 7)
+		GPU_DrawText(160, 218, "PRESS (B) FOR MENU", Color.new(115, 110, 102), "c", 320, SMALL_FONT, 7)
 		
 		if (TOUCHx==0 and TOUCHy==0 and DAY_INTRO_BTN.touched) or (Controls.check(pad, KEY_A) and not Controls.check(oldpad, KEY_A)) then
 			DAY_INTRO_BTN.touched = false
@@ -3760,6 +4578,10 @@ while true do
 			Timer.reset(GameTIME)
 			Timer.resume(GameTIME)
 			Timer.reset(Clock)
+			if CBtime then
+				Timer.reset(CBtime)
+				Timer.resume(CBtime)
+			end
 			clockInt = 0
 			DAY_OVER = false
 			CLEAR_CITATIONS()
@@ -3780,8 +4602,7 @@ while true do
 			SWITCHER = 1
 			for i=1,#DESKTOP do table.remove(DESKTOP,1) end
 			for i=1,#ALLITEMS do table.remove(ALLITEMS,1) end
-			for i=1,#CHAT do table.remove(CHAT,1) end
-			for i=1,#CHATplace do table.remove(CHATplace,1) end
+			CLEAR_CHAT()
 			table.insert(DESKTOP,1,"TRANSCRIPT")
 			table.insert(ALLITEMS,1,TRANSCRIPT)
 			table.insert(DESKTOP,1,"RULEBOOK")
