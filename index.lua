@@ -2,7 +2,7 @@
 GAME_AUTHOR = "Gab2006"
 GAME_VERSION_MAJOR = 0
 GAME_VERSION_MINOR = 2
-GAME_VERSION_MICRO = 2
+GAME_VERSION_MICRO = 4
 GAME_VERSION = GAME_VERSION_MAJOR .. "." .. GAME_VERSION_MINOR .. "." .. GAME_VERSION_MICRO
 
 Graphics.init()
@@ -267,6 +267,8 @@ function loadtex()
 	TRANSCRIPT.tex = Graphics.loadImage(System.currentDirectory().."ASSETS/TRANSCRIPT_TEX.png")
 	TRANSCRIPT.tex2 = Graphics.loadImage(System.currentDirectory().."ASSETS/TRANSCRIPT_TEX2.png")
 	TRANSCRIPT.tex3 = Graphics.loadImage(System.currentDirectory().."ASSETS/TRANSCRIPT_LINE.png")
+	BULLETIN.tex = Graphics.loadImage(System.currentDirectory().."ASSETS/BULLETIN_TEX.png")
+	BULLETIN.tex2 = Graphics.loadImage(System.currentDirectory().."ASSETS/BULLETIN_TEX2.png")
 	EMOA = Graphics.loadImage(System.currentDirectory().."ASSETS/EMOA.png")
 	EMOL = Graphics.loadImage(System.currentDirectory().."ASSETS/EMOL.png")
 	GIVE = Graphics.loadImage(System.currentDirectory().."ASSETS/GIVE.png")
@@ -280,6 +282,8 @@ function loadtex()
 	INSPECT_BTN_OPEN = Graphics.loadImage(System.currentDirectory().."ASSETS/InspectButtonOpen.png")
 	INSPECT_BTN_CLOSE = Graphics.loadImage(System.currentDirectory().."ASSETS/InspectButtonClose.png")
 	DETAIN_BTN_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/DetainButton.png")
+	CLOCK_PIN_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/ClockPin.png")
+	INSPECT_LINE_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/InspectLine.png")
 end
 function GarbageCollection()
 	if BKG_BTMS~= nil then
@@ -311,6 +315,14 @@ function GarbageCollection()
 		Graphics.freeImage(TRANSCRIPT.tex)
 		Graphics.freeImage(TRANSCRIPT.tex2)
 		Graphics.freeImage(TRANSCRIPT.tex3)
+		if BULLETIN and BULLETIN.tex then
+			Graphics.freeImage(BULLETIN.tex)
+			BULLETIN.tex = nil
+		end
+		if BULLETIN and BULLETIN.tex2 then
+			Graphics.freeImage(BULLETIN.tex2)
+			BULLETIN.tex2 = nil
+		end
 		Graphics.freeImage(clockHOUR)
 		Graphics.freeImage(clockMINUTE)
 		if FACE and FACE[1] then
@@ -345,6 +357,14 @@ function GarbageCollection()
 			Graphics.freeImage(DETAIN_BTN_TEX)
 			DETAIN_BTN_TEX = nil
 		end
+		if CLOCK_PIN_TEX ~= nil then
+			Graphics.freeImage(CLOCK_PIN_TEX)
+			CLOCK_PIN_TEX = nil
+		end
+		if INSPECT_LINE_TEX ~= nil then
+			Graphics.freeImage(INSPECT_LINE_TEX)
+			INSPECT_LINE_TEX = nil
+		end
 	end
 	Graphics.freeImage(NORMAL_FONT)
 	Graphics.freeImage(SMALL_FONT)
@@ -367,6 +387,10 @@ function GarbageCollection()
 		NEWS_TEX = nil
 		NEWS_TEX_DAY = nil
 	end
+	if NEWS_EZIC_TEX then
+		Graphics.freeImage(NEWS_EZIC_TEX)
+		NEWS_EZIC_TEX = nil
+	end
 	if BULLETIN_BTM_TEX then
 		Graphics.freeImage(BULLETIN_BTM_TEX)
 		BULLETIN_BTM_TEX = nil
@@ -384,6 +408,14 @@ function GarbageCollection()
 		Graphics.freeImage(DAYSUMMARY_TOP_TEX)
 		DAYSUMMARY_TOP_TEX = nil
 	end
+	if BUDGET_CHECK_TEX then
+		Graphics.freeImage(BUDGET_CHECK_TEX)
+		BUDGET_CHECK_TEX = nil
+	end
+	if APARTMENT_CLASS_TEX then
+		Graphics.freeImage(APARTMENT_CLASS_TEX)
+		APARTMENT_CLASS_TEX = nil
+	end
 end
 function LOAD_ITEMS()
 	PASSPORT={key="PASSPORT"} --Load Data for PASSPORT
@@ -393,11 +425,13 @@ function LOAD_ITEMS()
 	WORKPASS={key="WORKPASS"} --Load Data for WORKPASS
 	TRANSCRIPT={key="TRANSCRIPT",now=1,x=16,y=-27} --Load Data for TRANSCRIPT
 	RULEBOOK={state=2,key="RULEBOOK",now=1,x=5,y=23} --Load Data for RULEBOOK
-	DESKTOP={"RULEBOOK","TRANSCRIPT"} --NAMES OF THE ITEMS THAT ON TABLE
-	ALLITEMS={RULEBOOK,TRANSCRIPT} --TABLES OF ITEMS THAT IN DESKTOP table
+	BULLETIN={key="BULLETIN",now=1,x=34,y=23} --Load Data for BULLETIN
+	DESKTOP={"RULEBOOK","TRANSCRIPT","BULLETIN"} --NAMES OF THE ITEMS THAT ON TABLE
+	ALLITEMS={RULEBOOK,TRANSCRIPT,BULLETIN} --TABLES OF ITEMS THAT IN DESKTOP table
 	ITEM_BY_KEY={
 		RULEBOOK = RULEBOOK,
 		TRANSCRIPT = TRANSCRIPT,
+		BULLETIN = BULLETIN,
 		PASSPORT = PASSPORT,
 		IDCARD = IDCARD,
 		ENTRYPERMIT = ENTRYPERMIT,
@@ -943,9 +977,14 @@ function START_STORY_MODE()
 		table.insert(ALLITEMS,1,TRANSCRIPT)
 		table.insert(DESKTOP,1,"RULEBOOK")
 		table.insert(ALLITEMS,1,RULEBOOK)
+		table.insert(DESKTOP,1,"BULLETIN")
+		table.insert(ALLITEMS,1,BULLETIN)
 		RULEBOOK.x = 5
 		RULEBOOK.y = 23
 		RULEBOOK.now = 1
+		BULLETIN.x = 34
+		BULLETIN.y = 23
+		BULLETIN.now = 1
 		menu = 2
 	else
 		-- [START NEW DAY OR NOT IN PROGRESS]
@@ -1030,6 +1069,21 @@ function ScreenButton(xbut,ybut,texture,key,word)
 			STOP_BGM()
 			if menu=="Selection" then
 				CLEAR_CITATIONS()
+				-- [ARCADE MODE INITIALIZATION]
+				-- Endurance mode starts with 30 credits (authentic Papers, Please economy).
+				-- All other arcade modes start at 0.
+				WRONGMANn = 0
+				DAY_MISTAKES_COUNT = 0
+				DAY_CORRECT_COUNT = 0
+				DAY_INSPECTED_COUNT = 0
+				TIMEMINUS = 0
+				if MODEselect == 3 then
+					SCORE = 30
+				else
+					SCORE = 0
+				end
+				DAY_START_SCORE = SCORE
+				PEOPLESCORE = 0
 			end
 			if BKG_BTMS==nil then
 				loadtex()
@@ -1077,6 +1131,11 @@ function ScreenButton(xbut,ybut,texture,key,word)
 			table.insert(ALLITEMS,1,TRANSCRIPT)
 			table.insert(DESKTOP,1,"RULEBOOK")
 			table.insert(ALLITEMS,1,RULEBOOK)
+			table.insert(DESKTOP,1,"BULLETIN")
+			table.insert(ALLITEMS,1,BULLETIN)
+			BULLETIN.x = 34
+			BULLETIN.y = 23
+			BULLETIN.now = 1
 			SWITCHER = 1
 		end
 		if key=="Exit" then
@@ -1364,10 +1423,13 @@ function TOUCH_CHECK(word,key)
 	if key=="RULEBOOK" then
 		word.x = word.x or 5
 		word.y = word.y or 23
-		elseif key=="TRANSCRIPT" then
+	elseif key=="TRANSCRIPT" then
 		word.x = word.x or 16
 		word.y = word.y or -27
-		else
+	elseif key=="BULLETIN" then
+		word.x = word.x or 34
+		word.y = word.y or 23
+	else
 		word.x = word.x or 145
 		word.y = word.y or -200
 	end
@@ -1384,24 +1446,24 @@ function TOUCH_CHECK(word,key)
 			if TOUCH == key then
 				word.oldtouchx = word.oldtouchx or TOUCHx-word.x
 				word.oldtouchy = word.oldtouchy or TOUCHy-word.y
-				if TOUCHx-word.oldtouchx>35 and TOUCHx-word.oldtouchx+Graphics.getImageWidth(word.tex2)<285 and key~="RULEBOOK" and key~="TRANSCRIPT" then
+				if TOUCHx-word.oldtouchx>35 and TOUCHx-word.oldtouchx+Graphics.getImageWidth(word.tex2)<285 and key~="RULEBOOK" and key~="TRANSCRIPT" and key~="BULLETIN" then
 					word.x=TOUCHx-word.oldtouchx
-					elseif TOUCHx-word.oldtouchx<35 and key~="RULEBOOK" and key~="TRANSCRIPT" then
+				elseif TOUCHx-word.oldtouchx<35 and key~="RULEBOOK" and key~="TRANSCRIPT" and key~="BULLETIN" then
 					word.x=35
-					elseif word.y<22 and key=="TRANSCRIPT" then
+				elseif word.y<22 and key=="TRANSCRIPT" then
 					word.x=16
-					elseif TOUCHx-word.oldtouchx>285-math.floor(Graphics.getImageWidth(word.tex2)) then
+				elseif TOUCHx-word.oldtouchx>285-math.floor(Graphics.getImageWidth(word.tex2)) then
 					word.x=285-math.floor(Graphics.getImageWidth(word.tex2))
-					elseif TOUCHx-word.oldtouchx>5 and TOUCHx-word.oldtouchx+Graphics.getImageWidth(word.tex2)<285 and (key=="RULEBOOK" or key=="TRANSCRIPT") then
+				elseif TOUCHx-word.oldtouchx>5 and TOUCHx-word.oldtouchx+Graphics.getImageWidth(word.tex2)<285 and (key=="RULEBOOK" or key=="TRANSCRIPT" or key=="BULLETIN") then
 					word.x=TOUCHx-word.oldtouchx
-					elseif TOUCHx-word.oldtouchx<5 and (key=="RULEBOOK" or key=="TRANSCRIPT") then
+				elseif TOUCHx-word.oldtouchx<5 and (key=="RULEBOOK" or key=="TRANSCRIPT" or key=="BULLETIN") then
 					word.x=5
 				end
-				if TOUCHy-word.oldtouchy+Graphics.getImageHeight(word.tex2)<340 and TOUCHy-word.oldtouchy>22 and (stamp==nil or key=="RULEBOOK" or key=="TRANSCRIPT") then
+				if TOUCHy-word.oldtouchy+Graphics.getImageHeight(word.tex2)<340 and TOUCHy-word.oldtouchy>22 and (stamp==nil or key=="RULEBOOK" or key=="TRANSCRIPT" or key=="BULLETIN") then
 					word.y=TOUCHy-word.oldtouchy
-					elseif TOUCHy-word.oldtouchy+Graphics.getImageHeight(word.tex2)<340 and stamp~=nil and key~="RULEBOOK" and key~="TRANSCRIPT" then
+				elseif TOUCHy-word.oldtouchy+Graphics.getImageHeight(word.tex2)<340 and stamp~=nil and key~="RULEBOOK" and key~="TRANSCRIPT" and key~="BULLETIN" then
 					word.y=TOUCHy-word.oldtouchy
-					elseif TOUCHy-word.oldtouchy+Graphics.getImageHeight(word.tex2)<340 and key=="TRANSCRIPT" and word.x<36 then
+				elseif TOUCHy-word.oldtouchy+Graphics.getImageHeight(word.tex2)<340 and key=="TRANSCRIPT" and word.x<36 then
 					word.y=TOUCHy-word.oldtouchy
 				end
 			end
@@ -1447,7 +1509,7 @@ function TOUCH_CHECK(word,key)
 			word.oldtouchy = nil
 		end
 	end	
-	if TOUCH~=key and word.now==1 and key~="RULEBOOK" and key~="TRANSCRIPT" then
+	if TOUCH~=key and word.now==1 and key~="RULEBOOK" and key~="TRANSCRIPT" and key~="BULLETIN" then
 		if word.y <= 23 then
 			word.gravity = 0
 			word.velocity = 0
@@ -1481,6 +1543,23 @@ function TOUCH_CHECK(word,key)
 		if word.y>23 then word.y=word.y-1 end
 		if word.y<23 then word.y=23 end
 	end
+	if TOUCH~=key and word.now==1 and key=="BULLETIN" then
+		if word.x <= 34 then
+			word.gravity = 0
+		else 
+			word.gravity = 0.5 
+		end
+		time = Timer.getTime(timer)
+		if time>=10 then
+			Timer.reset(timer)
+			Timer.resume(timer)
+			word.velocity = word.velocity + word.gravity
+			word.x=word.x - word.velocity
+		end
+		if word.x<34 then word.x=34 end
+		if word.y>23 then word.y=word.y-1 end
+		if word.y<23 then word.y=23 end
+	end
 	if TOUCH~=key and word.oldtouchx~=nil and word.oldtouchy~=nil then
 		word.oldtouchx=nil
 		word.oldtouchy=nil
@@ -1507,6 +1586,71 @@ function TOUCH_CHECK(word,key)
 			word.y=-27
 		end
 	end
+end
+
+--------------------------------------------------------------------------------
+-- BULLETIN DYNAMIC LAYOUT ENGINE (DESK RENDERING)
+--------------------------------------------------------------------------------
+
+function GET_BULLETIN_LAYOUT(cur_cfg)
+	local rules = (cur_cfg and cur_cfg.bulletin_rules) or { "ARSTOTZKAN CITIZENS ONLY", "DENY ALL FOREIGNERS" }
+	local rule_info = {}
+	for idx = 1, #rules do
+		local r_text = rules[idx]
+		if r_text then
+			local is_wrapped = false
+			local l1, l2 = r_text, nil
+			if string.len(r_text) > 22 then
+				local split_pos = string.find(string.sub(r_text, 1, 22), "%s[^%s]*$") or 20
+				l1 = string.sub(r_text, 1, split_pos - 1)
+				l2 = string.sub(r_text, split_pos + 1)
+				is_wrapped = true
+			end
+
+			table.insert(rule_info, {
+				idx = idx,
+				text = r_text,
+				line1 = l1,
+				line2 = l2,
+				wrapped = is_wrapped,
+				h = is_wrapped and 16 or 7
+			})
+		end
+	end
+
+	local n = #rule_info
+	if n == 0 then
+		return { rules = {} }
+	end
+
+	local total_text_h = 0
+	for _, ri in ipairs(rule_info) do
+		total_text_h = total_text_h + ri.h
+	end
+	-- Middle zone between line 68 and line 131 is 62 px high (69..130)
+	local avail_gap = 62 - total_text_h
+	local gap = math.max(2, math.min(8, math.floor(avail_gap / (n + 1))))
+	local total_block_h = total_text_h + (n - 1) * gap
+	local start_y = 69 + math.max(2, math.floor((62 - total_block_h) / 2))
+
+	local cur_y = start_y
+	local layout_rules = {}
+	for _, ri in ipairs(rule_info) do
+		local ry = cur_y
+		table.insert(layout_rules, {
+			idx = ri.idx,
+			text = ri.text,
+			line1 = ri.line1,
+			line2 = ri.line2,
+			wrapped = ri.wrapped,
+			ry = ry
+		})
+		cur_y = ry + ri.h + gap
+	end
+
+	return {
+		rules = layout_rules
+	}
 end
 
 --------------------------------------------------------------------------------
@@ -1538,6 +1682,9 @@ function GET_ACTIVE_HOTSPOTS()
 						{ id = "RULEBOOK.RULE_SEAL", cat = "RULE_SEAL",       xo = 120, yo = 80, w = 110, h = 25 }
 					}
 				end
+			elseif key == "BULLETIN" then
+				-- Bulletin is an authentic desk reference document; inspection hotspots are disabled
+				templates = nil
 			end
 			if not templates then
 				templates = INSPECTION_HOTSPOTS[key]
@@ -1774,14 +1921,14 @@ function CHECK_DISCREPANCY(h1, h2)
 		end
 
 	-- 7. Height mismatch (Entrant vs ID Card)
-	elseif (c1 == "FACE" and c2 == "HEIGHT") or (c1 == "HEIGHT" and c2 == "HEIGHT" and h1.id ~= h2.id) then
+	elseif (c1 == "FACE" and c2 == "HEIGHT") or (c1 == "HEIGHT" and c2 == "FACE") or (c1 == "HEIGHT" and c2 == "HEIGHT" and h1.id ~= h2.id) then
 		if PERSON.idcardheight and PERSON.height and PERSON.idcardheight ~= PERSON.height then
 			match = true
 			wrong_id = 10
 		end
 
 	-- 8. Weight mismatch (Entrant vs ID Card)
-	elseif (c1 == "FACE" and c2 == "WEIGHT") or (c1 == "WEIGHT" and c2 == "WEIGHT" and h1.id ~= h2.id) then
+	elseif (c1 == "FACE" and c2 == "WEIGHT") or (c1 == "WEIGHT" and c2 == "FACE") or (c1 == "WEIGHT" and c2 == "WEIGHT" and h1.id ~= h2.id) then
 		if PERSON.idcardweight and PERSON.weight and PERSON.idcardweight ~= PERSON.weight then
 			match = true
 			wrong_id = 11
@@ -2003,6 +2150,7 @@ function EXECUTE_DETAIN()
 
 		local penalty_text = "WARNING - NO PENALTY"
 		local penalty_pts = 0
+		local penalty_time = 0
 		if IS_STORY_MODE then
 			if mistake_count == max_warnings + 1 then
 				penalty_text = "PENALTY: 5 CREDITS"
@@ -2011,9 +2159,41 @@ function EXECUTE_DETAIN()
 				penalty_text = "PENALTY: 10 CREDITS"
 				penalty_pts = 10
 			end
+		elseif MODEselect == 1 then
+			-- Timed mode: -20 seconds from 3rd error onward
+			if mistake_count <= 2 then
+				penalty_text = "WARNING - NO PENALTY"
+				penalty_time = 0
+			else
+				penalty_text = "PENALTY: -20 SECONDS"
+				penalty_time = 20000
+			end
+		elseif MODEselect == 2 then
+			-- Perfection mode: any unlawful detention is fatal
+			penalty_text = "FATAL INFRACTION - DISMISSED"
+			penalty_pts = 0
+		elseif MODEselect == 3 then
+			-- Endurance mode: 2 free warnings then credit deductions
+			if mistake_count <= 2 then
+				penalty_text = "WARNING - NO PENALTY"
+				penalty_pts = 0
+			elseif mistake_count == 3 then
+				penalty_text = "PENALTY: -5 CREDITS"
+				penalty_pts = 5
+			else
+				penalty_text = "PENALTY: -10 CREDITS"
+				penalty_pts = 10
+			end
 		end
 
-		SPAWN_CITATION("UNLAWFUL DETENTION", penalty_text, MODEselect, penalty_pts, 0)
+		SPAWN_CITATION("UNLAWFUL DETENTION", penalty_text, MODEselect, penalty_pts, penalty_time)
+		if MODEselect == 2 then
+			PERFECT_GAMEOVER_ACTIVE = true
+			PERFECT_GAMEOVER_READY = false
+			if PERFECT_TIMER == nil then PERFECT_TIMER = Timer.new() end
+			Timer.reset(PERFECT_TIMER)
+			Timer.pause(PERFECT_TIMER)
+		end
 	else
 		-- Lawful detention reward
 		table.insert(PENDING_REWARDS, {
@@ -2135,7 +2315,11 @@ function DRAW_INSPECTION_OVERLAY()
 					local t = s / steps
 					local px = math.floor(cx1 + dx * t)
 					local py = math.floor(cy1 + dy * t)
-					Graphics.fillRect(px, px + 2, py, py + 2, line_col)
+					if INSPECT_LINE_TEX then
+						Graphics.drawImage(px, py, INSPECT_LINE_TEX)
+					else
+						Graphics.fillRect(px, px + 2, py, py + 2, line_col)
+					end
 				end
 			end
 		end
@@ -2145,9 +2329,34 @@ function DRAW_INSPECTION_OVERLAY()
 	for _, sel in ipairs(INSPECTION.selected) do
 		local fill_col = INSPECTION.match_found and INSPECT_RED_FILL or INSPECT_AMBER_FILL
 		local border_col = INSPECTION.match_found and INSPECT_RED_BORDER or INSPECT_AMBER_BORDER
+		-- Semitransparent highlight fill inside hotspot
 		Graphics.fillRect(sel.x, sel.x + sel.w, sel.y, sel.y + sel.h, fill_col)
-		Graphics.fillEmptyRect(sel.x, sel.x + sel.w, sel.y, sel.y + sel.h, border_col)
-		Graphics.fillEmptyRect(sel.x - 1, sel.x + sel.w + 1, sel.y - 1, sel.y + sel.h + 1, border_col)
+
+		-- Pixel-perfect authentic 4-corner brackets framing the hotspot
+		local corner_col = INSPECTION.match_found and Color.new(225, 45, 45, 255) or Color.new(38, 30, 26, 255)
+		local pad = 1
+		local thick = 2
+		local arm = math.min(6, math.max(4, math.floor(sel.h / 2)))
+		local x0 = sel.x - pad
+		local y0 = sel.y - pad
+		local x1 = sel.x + sel.w + pad
+		local y1 = sel.y + sel.h + pad
+
+		-- Top-Left Corner Bracket
+		Graphics.fillRect(x0, x0 + arm, y0, y0 + thick, corner_col)
+		Graphics.fillRect(x0, x0 + thick, y0 + thick, y0 + arm, corner_col)
+
+		-- Top-Right Corner Bracket
+		Graphics.fillRect(x1 - arm, x1, y0, y0 + thick, corner_col)
+		Graphics.fillRect(x1 - thick, x1, y0 + thick, y0 + arm, corner_col)
+
+		-- Bottom-Left Corner Bracket
+		Graphics.fillRect(x0, x0 + arm, y1 - thick, y1, corner_col)
+		Graphics.fillRect(x0, x0 + thick, y1 - arm, y1 - thick, corner_col)
+
+		-- Bottom-Right Corner Bracket
+		Graphics.fillRect(x1 - arm, x1, y1 - thick, y1, corner_col)
+		Graphics.fillRect(x1 - thick, x1, y1 - arm, y1 - thick, corner_col)
 	end
 
 	-- 6. Negative Match Flash Animation
@@ -2252,6 +2461,19 @@ function LOAD_IMAGE(word,key)
 			Graphics.drawImage(word.x, word.y, word.tex)
 			LOAD_TEXT(key)
 		end
+		elseif key=="BULLETIN" then
+			if word.now==1 then
+				if Options["Shadow"]==1 then
+					Graphics.drawImage(word.x+1, word.y+3, word.tex2, SHADOW)
+				end
+				Graphics.drawImage(word.x, word.y, word.tex2)
+			elseif word.now==0 then
+				if TOUCH == key and Options["Shadow"]==1 then
+					Graphics.drawImage(word.x+3, word.y+3, word.tex, SHADOW)
+				end
+				Graphics.drawImage(word.x, word.y, word.tex)
+				LOAD_TEXT(key)
+			end
 		else
 		if word.now==0 then
 			if TOUCH == key then
@@ -2579,6 +2801,48 @@ function LOAD_TEXT(key, face)
 				end
 			end
 		end
+	elseif key == "BULLETIN" then
+		local bx = BULLETIN.x
+		local by = BULLETIN.y
+		-- In Story Mode use the current day config; in Arcade modes use the full checkpoint config.
+		local cur_cfg = IS_STORY_MODE
+			and ((GET_DAY_CONFIG and GET_DAY_CONFIG(CURRENT_DAY)) or (DAYS_CONFIG and DAYS_CONFIG[CURRENT_DAY or 1]))
+			or ARCADE_DAY_CONFIG
+		local day_num = IS_STORY_MODE and (CURRENT_DAY or 1) or "A"
+		local day_date = (cur_cfg and cur_cfg.date) or "26.11.1982"
+
+		-- [ZONE 1: MINISTRY HEADER (y = 0..67, height 68 px, above authentic dotted line at 68)]
+		GPU_DrawText(bx + 75, by + 8, "MINISTRY OF ADMISSION", Color.new(75, 55, 45), "c", 320, NORMAL_FONT, 8)
+		GPU_DrawText(bx + 75, by + 21, "OFFICIAL BULLETIN", Color.new(125, 45, 45), "c", 320, SMALL_FONT, 7)
+		GPU_DrawText(bx + 75, by + 33, "DAY " .. tostring(day_num) .. " - " .. day_date, Color.new(90, 80, 75), "c", 320, SMALL_FONT, 7)
+		GPU_DrawText(bx + 14, by + 52, "DAILY DIRECTIVES:", Color.new(55, 42, 38), "l", 320, SMALL_FONT, 7)
+
+		-- [ZONE 2: DIRECTIVES & RULES (y = 69..130, height 62 px, between line 68 and line 131)]
+		local blayout = GET_BULLETIN_LAYOUT(cur_cfg)
+		for _, r in ipairs(blayout.rules) do
+			local ry = by + r.ry
+			-- Square red bullet marker (centered vertically with first line of rule)
+			Graphics.fillRect(bx + 14, bx + 17, ry + 2, ry + 5, Color.new(140, 45, 40))
+			if r.wrapped then
+				GPU_DrawText(bx + 20, ry, r.line1, Color.new(45, 38, 34), "l", 320, SMALL_FONT, 7)
+				GPU_DrawText(bx + 20, ry + 9, r.line2, Color.new(45, 38, 34), "l", 320, SMALL_FONT, 7)
+			else
+				GPU_DrawText(bx + 20, ry, r.line1, Color.new(45, 38, 34), "l", 320, SMALL_FONT, 7)
+			end
+		end
+
+		-- [ZONE 3: NOTICE & PROTOCOL FOOTER (y = 132..199, height 68 px, below authentic dotted line at 131)]
+		if cur_cfg and cur_cfg.wanted_name then
+			GPU_DrawText(bx + 75, by + 146, "SPECIAL NOTICE", Color.new(135, 45, 45), "c", 320, SMALL_FONT, 7)
+			GPU_DrawText(bx + 75, by + 158, "FUGITIVE: " .. string.upper(cur_cfg.wanted_name), Color.new(55, 45, 40), "c", 320, SMALL_FONT, 7)
+		elseif cur_cfg and cur_cfg.embargo_nation then
+			GPU_DrawText(bx + 75, by + 146, "SPECIAL NOTICE", Color.new(135, 45, 45), "c", 320, SMALL_FONT, 7)
+			GPU_DrawText(bx + 75, by + 158, "EMBARGO: " .. string.upper(cur_cfg.embargo_nation), Color.new(55, 45, 40), "c", 320, SMALL_FONT, 7)
+		else
+			GPU_DrawText(bx + 75, by + 148, "INSPECTION PROTOCOL ACTIVE", Color.new(110, 100, 95), "c", 320, SMALL_FONT, 7)
+			GPU_DrawText(bx + 75, by + 160, "REPORT ALL DISCREPANCIES", Color.new(110, 100, 95), "c", 320, SMALL_FONT, 7)
+		end
+		GPU_DrawText(bx + 75, by + 178, "GLORY TO ARSTOTZKA", Color.new(100, 80, 75), "c", 320, SMALL_FONT, 7)
 	end
 end
 function STAMP_CODE()
@@ -3014,11 +3278,16 @@ function RANDOMIZE()
 	WORKPASS.rot =  math.random(-4,4)/10
 	table.insert(DESKTOP,1,"RULEBOOK")
 	table.insert(DESKTOP,1,"PASSPORT")
+	table.insert(DESKTOP,1,"BULLETIN")
 	table.insert(ALLITEMS,1,RULEBOOK)
 	table.insert(ALLITEMS,1,PASSPORT)
+	table.insert(ALLITEMS,1,BULLETIN)
 	RULEBOOK.x = 5
 	RULEBOOK.y = 23
 	RULEBOOK.now = 1
+	BULLETIN.x = 34
+	BULLETIN.y = 23
+	BULLETIN.now = 1
 	table.insert(CHAT,#CHAT+1,"Papers Please")
 	table.insert(CHATplace,#CHATplace+1,1)
 	local faces = PERSON.face
@@ -3192,13 +3461,21 @@ function RANDOMIZE()
 		end
 		elseif wrong==10 then
 		if PERSON.passport==2 then
-			PERSON.idcardheight = PERSON.idcardheight - math.random(7,10)
+			if math.random(1, 2) == 1 then
+				PERSON.idcardheight = PERSON.idcardheight - math.random(8, 12)
+			else
+				PERSON.idcardheight = PERSON.idcardheight + math.random(8, 12)
+			end
 			else 
 			wrong=1
 		end
 		elseif wrong==11 then
 		if PERSON.passport==2 then
-			PERSON.idcardweight = PERSON.weight - math.random(2,5)
+			if math.random(1, 2) == 1 then
+				PERSON.idcardweight = PERSON.weight - math.random(4, 8)
+			else
+				PERSON.idcardweight = PERSON.weight + math.random(4, 8)
+			end
 			else 
 			wrong=1
 		end
@@ -3315,50 +3592,50 @@ function TECHMENU()
 end
 function HEIGHTGENERATOR()
 	local a = 0
-	if PERSON.face==1 then a=math.random(165,171)
-		elseif PERSON.face==2 then a=math.random(165,171)
-		elseif PERSON.face==3 then a=math.random(164,170)
-		elseif PERSON.face==4 then a=math.random(161,164)
-		elseif PERSON.face==5 then a=math.random(181,184)
-		elseif PERSON.face==6 then a=math.random(164,170)
-		elseif PERSON.face==7 then a=math.random(178,182)
-		elseif PERSON.face==8 then a=math.random(175,181)
-		elseif PERSON.face==9 then a=math.random(179,183)
-		elseif PERSON.face==10 then a=math.random(170,173)
-		elseif PERSON.face==11 then a=math.random(178,182)
-		elseif PERSON.face==12 then a=math.random(173,179)
-		elseif PERSON.face==13 then a=math.random(177,181)
-		elseif PERSON.face==14 then a=math.random(173,179)
-		elseif PERSON.face==15 then a=math.random(179,183)
-		elseif PERSON.face==16 then a=math.random(179,183)
-		elseif PERSON.face==17 then a=math.random(169,173)
-		elseif PERSON.face==18 then a=math.random(178,182)
-		elseif PERSON.face==19 then a=math.random(165,171)
-		elseif PERSON.face==20 then a=math.random(169,174)
-		elseif PERSON.face==21 then a=math.random(164,169)
-		elseif PERSON.face==22 then a=math.random(164,170)
-		elseif PERSON.face==23 then a=math.random(165,171)
-		elseif PERSON.face==24 then a=math.random(179,183)
-		elseif PERSON.face==25 then a=math.random(180,183)
-		elseif PERSON.face==26 then a=math.random(178,182)
+	if PERSON.face==1 then a=math.random(166,169)
+		elseif PERSON.face==2 then a=math.random(167,169)
+		elseif PERSON.face==3 then a=math.random(165,168)
+		elseif PERSON.face==4 then a=math.random(173,176)
+		elseif PERSON.face==5 then a=math.random(182,185)
+		elseif PERSON.face==6 then a=math.random(165,168)
+		elseif PERSON.face==7 then a=math.random(178,181)
+		elseif PERSON.face==8 then a=math.random(177,180)
+		elseif PERSON.face==9 then a=math.random(180,182)
+		elseif PERSON.face==10 then a=math.random(171,173)
+		elseif PERSON.face==11 then a=math.random(178,181)
+		elseif PERSON.face==12 then a=math.random(173,176)
+		elseif PERSON.face==13 then a=math.random(176,178)
+		elseif PERSON.face==14 then a=math.random(173,176)
+		elseif PERSON.face==15 then a=math.random(179,181)
+		elseif PERSON.face==16 then a=math.random(181,184)
+		elseif PERSON.face==17 then a=math.random(173,176)
+		elseif PERSON.face==18 then a=math.random(178,181)
+		elseif PERSON.face==19 then a=math.random(166,169)
+		elseif PERSON.face==20 then a=math.random(171,173)
+		elseif PERSON.face==21 then a=math.random(163,166)
+		elseif PERSON.face==22 then a=math.random(178,181)
+		elseif PERSON.face==23 then a=math.random(168,170)
+		elseif PERSON.face==24 then a=math.random(179,181)
+		elseif PERSON.face==25 then a=math.random(181,183)
+		elseif PERSON.face==26 then a=math.random(178,181)
 		elseif PERSON.face==27 then a=math.random(181,184)
-		elseif PERSON.face==28 then a=math.random(180,183)
-		elseif PERSON.face==29 then a=math.random(173,179)
+		elseif PERSON.face==28 then a=math.random(181,184)
+		elseif PERSON.face==29 then a=math.random(175,177)
 		elseif PERSON.face==30 then a=math.random(161,164)
-		elseif PERSON.face==31 then a=math.random(169,173)
-		elseif PERSON.face==32 then a=math.random(175,181)
-		elseif PERSON.face==33 then a=math.random(171,174)
-		elseif PERSON.face==34 then a=math.random(178,182)
-		elseif PERSON.face==35 then a=math.random(169,174)
-		elseif PERSON.face==36 then a=math.random(168,172)
-		elseif PERSON.face==37 then a=math.random(171,174)
-		elseif PERSON.face==38 then a=math.random(173,179)
-		elseif PERSON.face==39 then a=math.random(173,179)
-		elseif PERSON.face==40 then a=math.random(175,181)
-		elseif PERSON.face==41 then a=math.random(165,171)
-		elseif PERSON.face==42 then a=math.random(171,174)
-		elseif PERSON.face==43 then a=math.random(169,174)
-		elseif PERSON.face==44 then a=math.random(161,164)
+		elseif PERSON.face==31 then a=math.random(171,173)
+		elseif PERSON.face==32 then a=math.random(178,181)
+		elseif PERSON.face==33 then a=math.random(172,174)
+		elseif PERSON.face==34 then a=math.random(178,181)
+		elseif PERSON.face==35 then a=math.random(171,173)
+		elseif PERSON.face==36 then a=math.random(169,171)
+		elseif PERSON.face==37 then a=math.random(172,175)
+		elseif PERSON.face==38 then a=math.random(173,176)
+		elseif PERSON.face==39 then a=math.random(173,176)
+		elseif PERSON.face==40 then a=math.random(177,180)
+		elseif PERSON.face==41 then a=math.random(166,169)
+		elseif PERSON.face==42 then a=math.random(171,173)
+		elseif PERSON.face==43 then a=math.random(171,173)
+		elseif PERSON.face==44 then a=math.random(172,174)
 	end
 	return a
 end
@@ -3523,8 +3800,8 @@ function CHECK_EMPTYTABLE()
 					penalty_text = "WARNING - NO PENALTY"
 					penalty_time = 0
 				else
-					penalty_text = "PENALTY: -30 SECONDS"
-					penalty_time = 30000
+					penalty_text = "PENALTY: -20 SECONDS"
+					penalty_time = 20000
 				end
 			elseif MODEselect == 2 then
 				penalty_text = "FATAL INFRACTION - DISMISSED"
@@ -3534,10 +3811,10 @@ function CHECK_EMPTYTABLE()
 					penalty_text = "WARNING - NO PENALTY"
 					penalty_pts = 0
 				elseif mistake_count == 3 then
-					penalty_text = "PENALTY: -5 POINTS"
+					penalty_text = "PENALTY: -5 CREDITS"
 					penalty_pts = 5
 				else
-					penalty_text = "PENALTY: -10 POINTS"
+					penalty_text = "PENALTY: -10 CREDITS"
 					penalty_pts = 10
 				end
 			else
@@ -3594,8 +3871,8 @@ function CHECK_EMPTYTABLE()
 					penalty_text = "WARNING - NO PENALTY"
 					penalty_time = 0
 				else
-					penalty_text = "PENALTY: -30 SECONDS"
-					penalty_time = 30000
+					penalty_text = "PENALTY: -20 SECONDS"
+					penalty_time = 20000
 				end
 			elseif MODEselect == 2 then
 				penalty_text = "FATAL INFRACTION - DISMISSED"
@@ -3605,10 +3882,10 @@ function CHECK_EMPTYTABLE()
 					penalty_text = "WARNING - NO PENALTY"
 					penalty_pts = 0
 				elseif mistake_count == 3 then
-					penalty_text = "PENALTY: -5 POINTS"
+					penalty_text = "PENALTY: -5 CREDITS"
 					penalty_pts = 5
 				else
-					penalty_text = "PENALTY: -10 POINTS"
+					penalty_text = "PENALTY: -10 CREDITS"
 					penalty_pts = 10
 				end
 			else
@@ -3666,6 +3943,9 @@ function LOAD_CLOCK()
 		Graphics.drawRotateImage(322,224, clockMINUTE,clockInt,Color.new(86,62,37))
 		Graphics.drawRotateImage(323,225, clockHOUR,clockInt/10,Color.new(66,42,28))
 		Graphics.drawRotateImage(323,225, clockMINUTE,clockInt,Color.new(66,42,28))
+	end
+	if CLOCK_PIN_TEX then
+		Graphics.drawImage(321, 223, CLOCK_PIN_TEX)
 	end
 end
 
@@ -3887,19 +4167,18 @@ while true do
 				DAY_OVER = true
 			end
 			plusPOINTS = 5
-		elseif MODEselect==1 then 
+		elseif MODEselect==1 then
+			-- [TIMED MODE] 10 minutes countdown (600s). Each error deducts -20s via TIMEMINUS.
 			TIME = 600000 - Timer.getTime(GameTIME) - TIMEMINUS
-			plusPOINTS = 1
+			plusPOINTS = 5
 			elseif MODEselect==2 then
+			-- [PERFECTION MODE] Stopwatch — time elapsed shown on HUD, game ends on first error.
 			TIME = Timer.getTime(GameTIME)
-			if 10 - TIMEmin  >= 1 then
-				plusPOINTS = 10 - TIMEmin
-				else
-				plusPOINTS = 1
-			end
+			plusPOINTS = 5
 			elseif MODEselect==3 then
+			-- [ENDURANCE MODE] Stopwatch — starts at 30 credits, ends when SCORE < 0.
 			TIME = Timer.getTime(GameTIME)
-			plusPOINTS = 1
+			plusPOINTS = 5
 		end
 		TIMEsec = TIME/1000
 		TIMEmin = math.floor(TIMEsec/60)
@@ -3908,7 +4187,7 @@ while true do
 		BKG_SHDW()
 		LOAD_FACE(PERSON.realface)
 		if CheckPoint == 1 and Controls.check(pad,KEY_A) and not Controls.check(oldpad,KEY_A) then
-			if not (IS_STORY_MODE and DAY_OVER) and not PERFECT_GAMEOVER_ACTIVE then
+			if not (IS_STORY_MODE and DAY_OVER) and not PERFECT_GAMEOVER_ACTIVE and not (MODEselect == 3 and SCORE < 0) then
 				PEOPLESCORE = PEOPLESCORE + 1
 				PLAY_SFX("speech_announce")
 				PLAY_SFX("traveler_walkin")
@@ -4034,9 +4313,9 @@ while true do
 			Graphics.fillRect(327,369,TIMEy-2,TIMEy+8,HUD_RED_BG)
 			Graphics.fillEmptyRect(327,369,TIMEy-2,TIMEy+8,HUD_RED_BORDER)
 			if Options["TextAlign"]==1 then
-				GPU_DrawText(347,TIMEy,"-00:30" ,HUD_RED_TEXT,"c",400,SMALL_FONT,7)
+				GPU_DrawText(347,TIMEy,"-00:20" ,HUD_RED_TEXT,"c",400,SMALL_FONT,7)
 				elseif Options["TextAlign"]==0 then
-				GPU_DrawText(330,TIMEy,"-00:30" ,HUD_RED_TEXT,"l",400,SMALL_FONT,7)
+				GPU_DrawText(330,TIMEy,"-00:20" ,HUD_RED_TEXT,"l",400,SMALL_FONT,7)
 			end
 		end
 		
@@ -4090,7 +4369,7 @@ while true do
 				end
 			end
 			elseif MODEselect==3 then
-			if SCORE<0 then
+			if SCORE<0 and not IS_CITATION_PRINTING() then
 				menu="GameOver"
 				Timer.pause(GameTIME)
 			end
@@ -4128,6 +4407,8 @@ while true do
 		end
 		elseif menu==0 then
 		if NIGHTREPORT_TEX then Graphics.freeImage(NIGHTREPORT_TEX); NIGHTREPORT_TEX = nil end
+		if APARTMENT_CLASS_TEX then Graphics.freeImage(APARTMENT_CLASS_TEX); APARTMENT_CLASS_TEX = nil end
+		if BUDGET_CHECK_TEX then Graphics.freeImage(BUDGET_CHECK_TEX); BUDGET_CHECK_TEX = nil end
 		GAMEOVER_ANIM_SCORE = nil
 		Graphics.initBlend(TOP_SCREEN)
 		Graphics.drawImage(0,TITLEy+265,Title)
@@ -4267,6 +4548,12 @@ while true do
 		if MAINMENUbutton == nil then
 			MAINMENUbutton = Graphics.loadImage(System.currentDirectory().."ASSETS/MAINMENUbutton.png")
 		end
+		if APARTMENT_CLASS_TEX == nil then
+			APARTMENT_CLASS_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/ApartmentClass.png")
+		end
+		if BUDGET_CHECK_TEX == nil then
+			BUDGET_CHECK_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BudgetLineCheck.png")
+		end
 
 		-- [TOP SCREEN: NIGHTREPORT BANNER & TERMINATION STATUS]
 		Graphics.initBlend(TOP_SCREEN)
@@ -4298,6 +4585,9 @@ while true do
 		GPU_DrawText(200, 68, gameover_sub, Color.new(220, 70, 70), "c", 400, SMALL_FONT, 7)
 
 		-- Subtle atmospheric watermark (East Grestin Housing)
+		if APARTMENT_CLASS_TEX then
+			Graphics.drawPartialImage(188, 110, 0, 0, 24, 30, APARTMENT_CLASS_TEX)
+		end
 		GPU_DrawText(200, 145, "MINISTRY OF ADMISSION - CLASS-8 HOUSING", Color.new(65, 80, 65), "c", 400, SMALL_FONT, 7)
 		GPU_DrawText(200, 160, "EAST GRESTIN DISTRICT", Color.new(50, 65, 50), "c", 400, SMALL_FONT, 7)
 
@@ -4368,17 +4658,23 @@ while true do
 		-- Row 5: FOOD
 		GPU_DrawText(35, ledger_y, "FOOD", RED_LEDGER, "l", 320, NORMAL_FONT, 8)
 		GPU_DrawText(268, ledger_y, "-" .. tostring(food_val), RED_LEDGER, "r", 320, NORMAL_FONT, 8)
-		-- Bullseye toggle glyph [o]
-		Graphics.fillEmptyRect(276, 284, ledger_y, ledger_y + 8, RED_LEDGER)
-		Graphics.fillRect(279, 281, ledger_y + 3, ledger_y + 5, RED_LEDGER)
+		if BUDGET_CHECK_TEX then
+			Graphics.drawPartialImage(274, ledger_y - 2, 0, 0, 12, 12, BUDGET_CHECK_TEX)
+		else
+			Graphics.fillEmptyRect(276, 284, ledger_y, ledger_y + 8, RED_LEDGER)
+			Graphics.fillRect(279, 281, ledger_y + 3, ledger_y + 5, RED_LEDGER)
+		end
 		ledger_y = ledger_y + row_h
 
 		-- Row 6: HEAT
 		GPU_DrawText(35, ledger_y, "HEAT", RED_LEDGER, "l", 320, NORMAL_FONT, 8)
 		GPU_DrawText(268, ledger_y, "-" .. tostring(heat_val), RED_LEDGER, "r", 320, NORMAL_FONT, 8)
-		-- Bullseye toggle glyph [o]
-		Graphics.fillEmptyRect(276, 284, ledger_y, ledger_y + 8, RED_LEDGER)
-		Graphics.fillRect(279, 281, ledger_y + 3, ledger_y + 5, RED_LEDGER)
+		if BUDGET_CHECK_TEX then
+			Graphics.drawPartialImage(274, ledger_y - 2, 0, 0, 12, 12, BUDGET_CHECK_TEX)
+		else
+			Graphics.fillEmptyRect(276, 284, ledger_y, ledger_y + 8, RED_LEDGER)
+			Graphics.fillRect(279, 281, ledger_y + 3, ledger_y + 5, RED_LEDGER)
+		end
 		ledger_y = ledger_y + 13
 
 		-- Dotted divider line
@@ -4415,6 +4711,8 @@ while true do
 			GAMEOVER_MENU_BTN.touched = false
 			GAMEOVER_ANIM_SCORE = nil
 			if NIGHTREPORT_TEX then Graphics.freeImage(NIGHTREPORT_TEX); NIGHTREPORT_TEX = nil end
+			if APARTMENT_CLASS_TEX then Graphics.freeImage(APARTMENT_CLASS_TEX); APARTMENT_CLASS_TEX = nil end
+			if BUDGET_CHECK_TEX then Graphics.freeImage(BUDGET_CHECK_TEX); BUDGET_CHECK_TEX = nil end
 			CLEAR_CITATIONS()
 			STOP_BGM()
 			menu = 0
@@ -4435,6 +4733,9 @@ while true do
 				NEWS_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BKG_BULLETIN_TOP.png")
 			end
 		end
+		if NEWS_EZIC_TEX == nil and (CURRENT_DAY or 1) >= 4 then
+			NEWS_EZIC_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/NewsEzicStamp.png")
+		end
 
 		-- [TOP SCREEN: AUTHENTIC NEWSPAPER - THE TRUTH OF ARSTOTZKA]
 		Graphics.initBlend(TOP_SCREEN)
@@ -4452,6 +4753,9 @@ while true do
 		else
 			Graphics.fillRect(news_x, 365, news_y, 220, Color.new(203, 202, 187))
 			Graphics.fillEmptyRect(news_x, 365, news_y, 220, Color.new(96, 95, 88))
+		end
+		if NEWS_EZIC_TEX and (CURRENT_DAY or 1) >= 4 then
+			Graphics.drawImage(news_x + 300, news_y + 155, NEWS_EZIC_TEX)
 		end
 		screenshotmake()
 		Graphics.termBlend()
@@ -4563,6 +4867,10 @@ while true do
 				NEWS_TEX = nil
 				NEWS_TEX_DAY = nil
 			end
+			if NEWS_EZIC_TEX then
+				Graphics.freeImage(NEWS_EZIC_TEX)
+				NEWS_EZIC_TEX = nil
+			end
 			if BULLETIN_BTM_TEX then
 				Graphics.freeImage(BULLETIN_BTM_TEX)
 				BULLETIN_BTM_TEX = nil
@@ -4607,9 +4915,14 @@ while true do
 			table.insert(ALLITEMS,1,TRANSCRIPT)
 			table.insert(DESKTOP,1,"RULEBOOK")
 			table.insert(ALLITEMS,1,RULEBOOK)
+			table.insert(DESKTOP,1,"BULLETIN")
+			table.insert(ALLITEMS,1,BULLETIN)
 			RULEBOOK.x = 5
 			RULEBOOK.y = 23
 			RULEBOOK.now = 1
+			BULLETIN.x = 34
+			BULLETIN.y = 23
+			BULLETIN.now = 1
 			STOP_BGM()
 			STOP_AMBIENT()
 			PLAY_SFX("booth_intro")
@@ -4620,6 +4933,10 @@ while true do
 				Graphics.freeImage(NEWS_TEX)
 				NEWS_TEX = nil
 				NEWS_TEX_DAY = nil
+			end
+			if NEWS_EZIC_TEX then
+				Graphics.freeImage(NEWS_EZIC_TEX)
+				NEWS_EZIC_TEX = nil
 			end
 			if BULLETIN_BTM_TEX then
 				Graphics.freeImage(BULLETIN_BTM_TEX)
@@ -4649,6 +4966,12 @@ while true do
 		end
 		if SCORE >= 0 and SLEEPbutton == nil then
 			SLEEPbutton = Graphics.loadImage(System.currentDirectory().."ASSETS/SLEEPbutton.png")
+		end
+		if APARTMENT_CLASS_TEX == nil then
+			APARTMENT_CLASS_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/ApartmentClass.png")
+		end
+		if BUDGET_CHECK_TEX == nil then
+			BUDGET_CHECK_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/BudgetLineCheck.png")
 		end
 		if DAYSUMMARY_BKG_TEX then Graphics.freeImage(DAYSUMMARY_BKG_TEX); DAYSUMMARY_BKG_TEX = nil end
 		if DAYSUMMARY_TOP_TEX then Graphics.freeImage(DAYSUMMARY_TOP_TEX); DAYSUMMARY_TOP_TEX = nil end
@@ -4698,6 +5021,9 @@ while true do
 		end
 		
 		-- Subtle atmospheric watermark (East Grestin Housing)
+		if APARTMENT_CLASS_TEX then
+			Graphics.drawPartialImage(188, 110, 0, 0, 24, 30, APARTMENT_CLASS_TEX)
+		end
 		GPU_DrawText(200, 145, "MINISTRY OF ADMISSION - CLASS-8 HOUSING", Color.new(65, 80, 65), "c", 400, SMALL_FONT, 7)
 		GPU_DrawText(200, 160, "EAST GRESTIN DISTRICT", Color.new(50, 65, 50), "c", 400, SMALL_FONT, 7)
 		
@@ -4765,17 +5091,23 @@ while true do
 		-- Row 5: FOOD
 		GPU_DrawText(35, ledger_y, "FOOD", RED_LEDGER, "l", 320, NORMAL_FONT, 8)
 		GPU_DrawText(268, ledger_y, "-" .. tostring(food_val), RED_LEDGER, "r", 320, NORMAL_FONT, 8)
-		-- Bullseye toggle glyph [o]
-		Graphics.fillEmptyRect(276, 284, ledger_y, ledger_y + 8, RED_LEDGER)
-		Graphics.fillRect(279, 281, ledger_y + 3, ledger_y + 5, RED_LEDGER)
+		if BUDGET_CHECK_TEX then
+			Graphics.drawPartialImage(274, ledger_y - 2, 0, 0, 12, 12, BUDGET_CHECK_TEX)
+		else
+			Graphics.fillEmptyRect(276, 284, ledger_y, ledger_y + 8, RED_LEDGER)
+			Graphics.fillRect(279, 281, ledger_y + 3, ledger_y + 5, RED_LEDGER)
+		end
 		ledger_y = ledger_y + row_h
 		
 		-- Row 6: HEAT
 		GPU_DrawText(35, ledger_y, "HEAT", RED_LEDGER, "l", 320, NORMAL_FONT, 8)
 		GPU_DrawText(268, ledger_y, "-" .. tostring(heat_val), RED_LEDGER, "r", 320, NORMAL_FONT, 8)
-		-- Bullseye toggle glyph [o]
-		Graphics.fillEmptyRect(276, 284, ledger_y, ledger_y + 8, RED_LEDGER)
-		Graphics.fillRect(279, 281, ledger_y + 3, ledger_y + 5, RED_LEDGER)
+		if BUDGET_CHECK_TEX then
+			Graphics.drawPartialImage(274, ledger_y - 2, 0, 0, 12, 12, BUDGET_CHECK_TEX)
+		else
+			Graphics.fillEmptyRect(276, 284, ledger_y, ledger_y + 8, RED_LEDGER)
+			Graphics.fillRect(279, 281, ledger_y + 3, ledger_y + 5, RED_LEDGER)
+		end
 		ledger_y = ledger_y + 13
 		
 		-- Dotted divider line
@@ -4816,6 +5148,8 @@ while true do
 				DAY_MENU_BTN.touched = false
 				DAYSUMMARY_ANIM_SCORE = nil
 				if NIGHTREPORT_TEX then Graphics.freeImage(NIGHTREPORT_TEX); NIGHTREPORT_TEX = nil end
+				if APARTMENT_CLASS_TEX then Graphics.freeImage(APARTMENT_CLASS_TEX); APARTMENT_CLASS_TEX = nil end
+				if BUDGET_CHECK_TEX then Graphics.freeImage(BUDGET_CHECK_TEX); BUDGET_CHECK_TEX = nil end
 				CLEAR_CITATIONS()
 				DAY_EXPENSES_DEDUCTED_DAY = nil
 				DAY_SUMMARY_EXPENSES = nil
@@ -4880,6 +5214,8 @@ while true do
 				DAY_SLEEP_BTN.touched = false
 				DAYSUMMARY_ANIM_SCORE = nil
 				if NIGHTREPORT_TEX then Graphics.freeImage(NIGHTREPORT_TEX); NIGHTREPORT_TEX = nil end
+				if APARTMENT_CLASS_TEX then Graphics.freeImage(APARTMENT_CLASS_TEX); APARTMENT_CLASS_TEX = nil end
+				if BUDGET_CHECK_TEX then Graphics.freeImage(BUDGET_CHECK_TEX); BUDGET_CHECK_TEX = nil end
 				CLEAR_CITATIONS()
 				CURRENT_DAY = CURRENT_DAY + 1
 				DAY_START_SCORE = SCORE
@@ -4906,6 +5242,8 @@ while true do
 				DAY_MENU_BTN.touched = false
 				DAYSUMMARY_ANIM_SCORE = nil
 				if NIGHTREPORT_TEX then Graphics.freeImage(NIGHTREPORT_TEX); NIGHTREPORT_TEX = nil end
+				if APARTMENT_CLASS_TEX then Graphics.freeImage(APARTMENT_CLASS_TEX); APARTMENT_CLASS_TEX = nil end
+				if BUDGET_CHECK_TEX then Graphics.freeImage(BUDGET_CHECK_TEX); BUDGET_CHECK_TEX = nil end
 				local next_day = CURRENT_DAY + 1
 				DAY_START_SCORE = SCORE
 				DAY_EXPENSES_DEDUCTED_DAY = nil

@@ -275,6 +275,27 @@ FIELDS={
 	"Surveying"
 }
 
+-- [ARCADE MODE DAY CONFIG]
+-- Static full-checkpoint ruleset used by all three arcade modes (Timed, Perfection, Endurance).
+-- Mirrors the advanced checkpoint rules (Days 4+) so the desk bulletin is accurate and consistent.
+ARCADE_DAY_CONFIG = {
+	date             = "26.11.1982",
+	headline         = "CHECKPOINT ACTIVE",
+	subline          = "Standard border inspection rules apply.",
+	bulletin_rules   = {
+		"ARSTOTZKA: VALID PASSPORT + ID CARD",
+		"FOREIGNERS: ENTRY PERMIT REQUIRED",
+		"WORKERS: VALID WORK PASS REQUIRED",
+		"CHECK ALL SEALS AND EXPIRATION DATES"
+	},
+	allow_foreigners = true,
+	require_permit   = true,
+	require_workpass = true,
+	allowed_warnings = 2,
+	daily_expenses   = 0,
+	duration_sec     = 600 -- 10 minutes (Timed mode timer ceiling)
+}
+
 DAYS_CONFIG = {
 	[1] = {
 		date = "23.11.1982",

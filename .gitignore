@@ -52,6 +52,7 @@ scratch/
 *.swo
 *~
 *.orig
+original_assets/
 
 # Screenshots, logs, and crash dumps
 *.bmp
@@ -83,6 +84,7 @@ GEMINI.md
 *.sublime-project
 *.sublime-workspace
 docs/
+
 # Operating system files (Windows, macOS, Linux)
 Thumbs.db
 Thumbs.db:encryptable
