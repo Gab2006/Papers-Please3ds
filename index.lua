@@ -2,7 +2,7 @@
 GAME_AUTHOR = "Gab2006"
 GAME_VERSION_MAJOR = 0
 GAME_VERSION_MINOR = 2
-GAME_VERSION_MICRO = 4
+GAME_VERSION_MICRO = 8
 GAME_VERSION = GAME_VERSION_MAJOR .. "." .. GAME_VERSION_MINOR .. "." .. GAME_VERSION_MICRO
 
 Graphics.init()
@@ -580,6 +580,7 @@ if Timer and Timer.getTime then
 end
 
 timer = Timer.new()
+STAMP_TIMER = Timer.new()
 Clock = Timer.new()
 GameTIME = Timer.new()
 Timer.pause(GameTIME)
@@ -1435,7 +1436,7 @@ function TOUCH_CHECK(word,key)
 	end
 	word.now = word.now or 1
 	word.velocity=word.velocity or 0
-	word.gravity=gravity or 0
+	word.gravity=word.gravity or 0
 	if TOUCHx>0 and TOUCHy>0 then
 		if word.now==1 then
 			if	TOUCH=="ACTIVE" and TOUCHx >= word.x and TOUCHx <= word.x+Graphics.getImageWidth(word.tex2) and TOUCHy>=word.y and TOUCHy <= word.y+Graphics.getImageHeight(word.tex2) then 
@@ -1496,6 +1497,8 @@ function TOUCH_CHECK(word,key)
 		
 		if TOUCHy>67 and TOUCH==key and word.now==1 then
 			word.now=0
+			word.velocity=0
+			word.gravity=0
 			word.x=TOUCHx-math.floor(Graphics.getImageWidth(word.tex)/2)
 			word.y=TOUCHy-math.floor(Graphics.getImageHeight(word.tex)/2)
 			word.oldtouchx = nil
@@ -1503,6 +1506,8 @@ function TOUCH_CHECK(word,key)
 		end
 		if TOUCHy<=67 and TOUCH==key and word.now==0 then
 			word.now=1
+			word.velocity=0
+			word.gravity=0
 			word.x=TOUCHx-math.floor(Graphics.getImageWidth(word.tex2)/2)
 			word.y=TOUCHy-math.floor(Graphics.getImageHeight(word.tex2)/2)
 			word.oldtouchx = nil
@@ -1510,80 +1515,116 @@ function TOUCH_CHECK(word,key)
 		end
 	end	
 	if TOUCH~=key and word.now==1 and key~="RULEBOOK" and key~="TRANSCRIPT" and key~="BULLETIN" then
-		if word.y <= 23 then
+		word.velocity = word.velocity or 0
+		word.gravity = word.gravity or 0
+
+		if word.y < 23 then
 			word.gravity = 0
 			word.velocity = 0
-			else 
-			word.gravity = 0.1 
-		end
-		time = Timer.getTime(timer)
-		if time>=10 and word.y>24 then
-			Timer.reset(timer)
-			Timer.resume(timer)
+			word.y = word.y + 3
+			if word.y >= 23 then
+				word.y = 23
+			end
+		elseif word.y > 24 then
+			word.gravity = 0.1
 			word.velocity = word.velocity + word.gravity
-			word.y=word.y - word.velocity
-			elseif word.y<23 then
-			word.y=word.y+3
+			word.y = word.y - word.velocity
+			if word.y <= 23 then
+				word.y = 23
+				word.velocity = 0
+				word.gravity = 0
+			end
+		else
+			word.gravity = 0
+			word.velocity = 0
 		end
 	end
 	if TOUCH~=key and word.now==1 and key=="RULEBOOK" then
-		if word.x <= 5 then
-			word.gravity = 0
-			else 
-			word.gravity = 0.5 
-		end
-		time = Timer.getTime(timer)
-		if time>=10 then
-			Timer.reset(timer)
-			Timer.resume(timer)
+		word.velocity = word.velocity or 0
+		if word.x > 5 then
+			word.gravity = 0.5
 			word.velocity = word.velocity + word.gravity
-			word.x=word.x - word.velocity
+			if word.velocity > 12 then word.velocity = 12 end
+			word.x = word.x - word.velocity
+			if word.x <= 5 then
+				word.x = 5
+				word.velocity = 0
+				word.gravity = 0
+			end
+		elseif word.x < 5 then
+			word.x = 5
+			word.velocity = 0
+			word.gravity = 0
+		else
+			word.velocity = 0
+			word.gravity = 0
 		end
-		if word.x<5 then word.x=5 end
-		if word.y>23 then word.y=word.y-1 end
-		if word.y<23 then word.y=23 end
+		if word.y > 23 then
+			word.y = word.y - 1
+			if word.y <= 23 then word.y = 23 end
+		elseif word.y < 23 then
+			word.y = 23
+		end
 	end
 	if TOUCH~=key and word.now==1 and key=="BULLETIN" then
-		if word.x <= 34 then
-			word.gravity = 0
-		else 
-			word.gravity = 0.5 
-		end
-		time = Timer.getTime(timer)
-		if time>=10 then
-			Timer.reset(timer)
-			Timer.resume(timer)
+		word.velocity = word.velocity or 0
+		if word.x > 34 then
+			word.gravity = 0.5
 			word.velocity = word.velocity + word.gravity
-			word.x=word.x - word.velocity
+			if word.velocity > 12 then word.velocity = 12 end
+			word.x = word.x - word.velocity
+			if word.x <= 34 then
+				word.x = 34
+				word.velocity = 0
+				word.gravity = 0
+			end
+		elseif word.x < 34 then
+			word.x = 34
+			word.velocity = 0
+			word.gravity = 0
+		else
+			word.velocity = 0
+			word.gravity = 0
 		end
-		if word.x<34 then word.x=34 end
-		if word.y>23 then word.y=word.y-1 end
-		if word.y<23 then word.y=23 end
+		if word.y > 23 then
+			word.y = word.y - 1
+			if word.y <= 23 then word.y = 23 end
+		elseif word.y < 23 then
+			word.y = 23
+		end
 	end
-	if TOUCH~=key and word.oldtouchx~=nil and word.oldtouchy~=nil then
+	if TOUCH~=key and (word.oldtouchx~=nil or word.oldtouchy~=nil) then
 		word.oldtouchx=nil
 		word.oldtouchy=nil
 		PLAY_SFX("paper_dragstop")
 	end
 	if TOUCH~=key and word.now==1 and key=="TRANSCRIPT" then
-		if word.x <= 16 then
-			word.gravity = 0
-			else 
-			word.gravity = 0.5 
-		end
-		time = Timer.getTime(timer)
-		if time>=10 then
-			Timer.reset(timer)
-			Timer.resume(timer)
+		word.velocity = word.velocity or 0
+		if word.x > 16 then
+			word.gravity = 0.5
 			word.velocity = word.velocity + word.gravity
-			word.x=word.x - word.velocity
+			if word.velocity > 12 then word.velocity = 12 end
+			word.x = word.x - word.velocity
+			if word.x <= 16 then
+				word.x = 16
+				word.velocity = 0
+				word.gravity = 0
+			end
+		elseif word.x < 16 then
+			word.x = 16
+			word.velocity = 0
+			word.gravity = 0
+		else
+			word.velocity = 0
+			word.gravity = 0
 		end
-		if word.x<16 then word.x=16 end
-		if word.x==16 and word.y>-27 then
-			word.y=word.y-3
-		end
-		if word.x==16 and word.y<-27 then
-			word.y=-27
+		if word.x == 16 then
+			if word.y > -27 then
+				word.y = word.y - 3
+				if word.y <= -27 then word.y = -27 end
+			elseif word.y < -27 then
+				word.y = -27
+			end
 		end
 	end
 end
@@ -1668,19 +1709,8 @@ function GET_ACTIVE_HOTSPOTS()
 			if key == "PASSPORT" and INSPECTION_HOTSPOTS_PASSPORT and PERSON and PERSON.passport then
 				templates = INSPECTION_HOTSPOTS_PASSPORT[PERSON.passport]
 			elseif key == "RULEBOOK" then
-				if doc.state == 8 then
-					templates = {
-						{ id = "RULEBOOK.SEAL_MOA", cat = "SEAL_MOA", xo = 15,  yo = 100, w = 86, h = 42 },
-						{ id = "RULEBOOK.TEXT_MOA", cat = "SEAL_MOA", xo = 15,  yo = 25,  w = 86, h = 70 },
-						{ id = "RULEBOOK.SEAL_MOL", cat = "SEAL_MOL", xo = 133, yo = 22,  w = 92, h = 78 },
-						{ id = "RULEBOOK.TEXT_MOL", cat = "SEAL_MOL", xo = 133, yo = 104, w = 92, h = 42 }
-					}
-				elseif doc.state == 2 then
-					templates = {
-						{ id = "RULEBOOK.RULE_FOR",  cat = "RULE_FOREIGNERS", xo = 120, yo = 40, w = 110, h = 18 },
-						{ id = "RULEBOOK.RULE_DATE", cat = "TODAY_DATE",      xo = 120, yo = 60, w = 110, h = 18 },
-						{ id = "RULEBOOK.RULE_SEAL", cat = "RULE_SEAL",       xo = 120, yo = 80, w = 110, h = 25 }
-					}
+				if INSPECTION_HOTSPOTS_RULEBOOK and doc.state then
+					templates = INSPECTION_HOTSPOTS_RULEBOOK[doc.state]
 				end
 			elseif key == "BULLETIN" then
 				-- Bulletin is an authentic desk reference document; inspection hotspots are disabled
@@ -1703,6 +1733,8 @@ function GET_ACTIVE_HOTSPOTS()
 					table.insert(hotspots, {
 						id = t.id,
 						cat = t.cat,
+						xo = xo,
+						yo = yo,
 						x = doc.x + xo,
 						y = doc.y + yo,
 						w = t.w,
@@ -1733,62 +1765,77 @@ function GET_ACTIVE_HOTSPOTS()
 	return hotspots
 end
 
-function INSPECTION_TOUCH(tx, ty)
-	-- Allow flipping rulebook pages during inspection mode
-	local rb = ITEM_BY_KEY and ITEM_BY_KEY["RULEBOOK"]
-	if rb and rb.now == 0 then
-		if tx >= rb.x + 215 and tx <= rb.x + 238 and ty >= rb.y + 138 and ty <= rb.y + 158 and rb.state < 8 then
-			rb.state = rb.state + 1
-			INSPECTION.selected = {}
-			INSPECTION.match_found = false
-			PLAY_SFX("paper_turnpage")
-			return true
-		elseif tx >= rb.x and tx <= rb.x + 22 and ty >= rb.y + 138 and ty <= rb.y + 158 and rb.state > 2 then
-			rb.state = rb.state - 1
-			INSPECTION.selected = {}
-			INSPECTION.match_found = false
-			PLAY_SFX("paper_turnpage")
-			return true
-		end
+function GET_DOC_DESK_BOUNDS(doc, key)
+	if not doc then return 0, 0, 0, 0 end
+	local x = doc.x or 0
+	local y = doc.y or 0
+	local w, h = 150, 200
+	if key == "PASSPORT" then
+		w, h = 130, 162
+	elseif key == "RULEBOOK" then
+		w, h = 238, 158
+	elseif doc.is_cit then
+		w, h = 183, 80
+	elseif key == "IDCARD" then
+		w, h = 126, 71
+	elseif key == "WORKPASS" then
+		w, h = 147, 135
+	elseif key == "ENTRYPERMIT" then
+		w, h = 150, 201
+	elseif doc.tex then
+		w = Graphics.getImageWidth(doc.tex)
+		h = Graphics.getImageHeight(doc.tex)
 	end
+	return x, y, w, h
+end
 
-	local hotspots = GET_ACTIVE_HOTSPOTS()
-	local pad_x = 4
-	local pad_y = 4
-	for _, hs in ipairs(hotspots) do
-		if tx >= hs.x - pad_x and tx <= hs.x + hs.w + pad_x and ty >= hs.y - pad_y and ty <= hs.y + hs.h + pad_y then
-			-- Check if already selected -> deselect
-			for j, sel in ipairs(INSPECTION.selected) do
-				if sel.id == hs.id then
-					table.remove(INSPECTION.selected, j)
-					PLAY_SFX("inspect_unhighlight")
-					INSPECTION.match_found = false
-					INSPECTION.match_reason = nil
+local function IS_POINT_IN_DESK_DOC(tx, ty, doc, key)
+	if not doc or doc.now ~= 0 then return false end
+	if ty < 68 then return false end
+	local dx, dy, dw, dh = GET_DOC_DESK_BOUNDS(doc, key)
+	return tx >= dx and tx <= dx + dw and ty >= dy and ty <= dy + dh
+end
+
+function INSPECTION_TOUCH(tx, ty)
+	-- 1. Counter Shelf tap (y <= 67): Anchors & Folded Documents
+	if ty <= 67 then
+		if INSPECTION_ANCHORS then
+			for _, a in ipairs(INSPECTION_ANCHORS) do
+				if tx >= a.x and tx <= a.x + a.w and ty >= a.y and ty <= a.y + a.h then
+					local hs = {
+						id = a.id,
+						cat = a.cat,
+						x = a.x,
+						y = a.y,
+						w = a.w,
+						h = a.h,
+						label = a.label,
+						doc = "ANCHOR"
+					}
+					for j, sel in ipairs(INSPECTION.selected) do
+						if sel.id == hs.id then
+							table.remove(INSPECTION.selected, j)
+							PLAY_SFX("inspect_unhighlight")
+							INSPECTION.match_found = false
+							INSPECTION.match_reason = nil
+							return true
+						end
+					end
+					if #INSPECTION.selected >= 2 then
+						table.remove(INSPECTION.selected, 1)
+						INSPECTION.match_found = false
+						INSPECTION.match_reason = nil
+					end
+					table.insert(INSPECTION.selected, hs)
+					PLAY_SFX("inspect_highlight")
+					if #INSPECTION.selected == 2 and CHECK_DISCREPANCY then
+						CHECK_DISCREPANCY(INSPECTION.selected[1], INSPECTION.selected[2])
+					end
 					return true
 				end
 			end
-			-- If 2 already selected, remove oldest (FIFO queue of 2)
-			if #INSPECTION.selected >= 2 then
-				table.remove(INSPECTION.selected, 1)
-				INSPECTION.match_found = false
-				INSPECTION.match_reason = nil
-			end
-			-- Add new selection
-			table.insert(INSPECTION.selected, hs)
-			PLAY_SFX("inspect_highlight")
-
-			-- If 2 selected, run discrepancy check
-			if #INSPECTION.selected == 2 then
-				if CHECK_DISCREPANCY then
-					CHECK_DISCREPANCY(INSPECTION.selected[1], INSPECTION.selected[2])
-				end
-			end
-			return true
 		end
-	end
 
-	-- If tap was on upper counter shelf (y <= 67), check if user tapped a document resting on shelf
-	if tx > 0 and ty <= 67 then
 		for i = 1, #DESKTOP do
 			local k = DESKTOP[i]
 			local d = ITEM_BY_KEY and ITEM_BY_KEY[k]
@@ -1804,9 +1851,115 @@ function INSPECTION_TOUCH(tx, ty)
 				end
 			end
 		end
+		return false
 	end
 
-	return false
+	-- 2. Desk tap (y > 67): Find top-most document in DESKTOP (Z-order)
+	local top_key = nil
+	local top_doc = nil
+	for i = 1, #DESKTOP do
+		local k = DESKTOP[i]
+		local d = ITEM_BY_KEY and ITEM_BY_KEY[k]
+		if d and IS_POINT_IN_DESK_DOC(tx, ty, d, k) then
+			top_key = k
+			top_doc = d
+			break
+		end
+	end
+
+	-- If tap was on empty desk table, return false
+	if not top_key or not top_doc then
+		return false
+	end
+
+	-- 3. Top document is RULEBOOK: Check page flip dog-ears first
+	if top_key == "RULEBOOK" then
+		if tx >= top_doc.x + 215 and tx <= top_doc.x + 238 and ty >= top_doc.y + 138 and ty <= top_doc.y + 158 and top_doc.state < 8 then
+			top_doc.state = top_doc.state + 1
+			INSPECTION.selected = {}
+			INSPECTION.match_found = false
+			PLAY_SFX("paper_turnpage")
+			return true
+		elseif tx >= top_doc.x and tx <= top_doc.x + 22 and ty >= top_doc.y + 138 and ty <= top_doc.y + 158 and top_doc.state > 2 then
+			top_doc.state = top_doc.state - 1
+			INSPECTION.selected = {}
+			INSPECTION.match_found = false
+			PLAY_SFX("paper_turnpage")
+			return true
+		end
+	end
+
+	-- 4. Get active hotspots for ONLY the top-most document
+	local hotspots = GET_ACTIVE_HOTSPOTS()
+	local top_hotspots = {}
+	for _, hs in ipairs(hotspots) do
+		if hs.doc == top_key then
+			table.insert(top_hotspots, hs)
+		end
+	end
+
+	local best_hs = nil
+	local best_dist = 999999
+
+	-- Phase 1: Exact hit strictly inside hotspot bounds
+	for _, hs in ipairs(top_hotspots) do
+		if tx >= hs.x and tx <= hs.x + hs.w and ty >= hs.y and ty <= hs.y + hs.h then
+			best_hs = hs
+			best_dist = 0
+			break
+		end
+	end
+
+	-- Phase 2: Closest hit within tolerance margin (pad_x = 4, pad_y = 2)
+	if not best_hs then
+		local pad_x = 4
+		local pad_y = 2
+		for _, hs in ipairs(top_hotspots) do
+			if tx >= hs.x - pad_x and tx <= hs.x + hs.w + pad_x and ty >= hs.y - pad_y and ty <= hs.y + hs.h + pad_y then
+				local cx = hs.x + hs.w / 2
+				local cy = hs.y + hs.h / 2
+				local dist = (tx - cx) * (tx - cx) + (ty - cy) * (ty - cy)
+				if dist < best_dist then
+					best_dist = dist
+					best_hs = hs
+				end
+			end
+		end
+	end
+
+	if best_hs then
+		local hs = best_hs
+		-- Check if already selected -> deselect
+		for j, sel in ipairs(INSPECTION.selected) do
+			if sel.id == hs.id then
+				table.remove(INSPECTION.selected, j)
+				PLAY_SFX("inspect_unhighlight")
+				INSPECTION.match_found = false
+				INSPECTION.match_reason = nil
+				return true
+			end
+		end
+		-- If 2 already selected, remove oldest (FIFO queue of 2)
+		if #INSPECTION.selected >= 2 then
+			table.remove(INSPECTION.selected, 1)
+			INSPECTION.match_found = false
+			INSPECTION.match_reason = nil
+		end
+		-- Add new selection
+		table.insert(INSPECTION.selected, hs)
+		PLAY_SFX("inspect_highlight")
+
+		-- If 2 selected, run discrepancy check
+		if #INSPECTION.selected == 2 then
+			if CHECK_DISCREPANCY then
+				CHECK_DISCREPANCY(INSPECTION.selected[1], INSPECTION.selected[2])
+			end
+		end
+		return true
+	end
+
+	-- 5. Blank area of top document was tapped -> Absorb touch (prevent click-through)
+	return true
 end
 
 --------------------------------------------------------------------------------
@@ -2262,6 +2415,52 @@ local INSPECT_BTN_BORDER   = Color.new(220, 220, 210, 240)
 local INSPECT_DETAIN_BG    = Color.new(150, 25, 25, 240)
 local INSPECT_DETAIN_BD    = Color.new(240, 90, 90, 250)
 
+local function DRAW_HOTSPOT_HIGHLIGHT(sel)
+	local fill_col = INSPECTION.match_found and INSPECT_RED_FILL or INSPECT_AMBER_FILL
+	local border_col = INSPECTION.match_found and INSPECT_RED_BORDER or INSPECT_AMBER_BORDER
+	local doc = sel.doc and ITEM_BY_KEY and ITEM_BY_KEY[sel.doc]
+	local sx = (doc and sel.xo) and (doc.x + sel.xo) or sel.x
+	local sy = (doc and sel.yo) and (doc.y + sel.yo) or sel.y
+	-- Semitransparent highlight fill inside hotspot
+	Graphics.fillRect(sx, sx + sel.w, sy, sy + sel.h, fill_col)
+
+	-- Pixel-perfect authentic 4-corner brackets framing the hotspot
+	local corner_col = INSPECTION.match_found and Color.new(225, 45, 45, 255) or Color.new(38, 30, 26, 255)
+	local pad = 1
+	local thick = 2
+	local arm = math.min(6, math.max(4, math.floor(sel.h / 2)))
+	local x0 = sx - pad
+	local y0 = sy - pad
+	local x1 = sx + sel.w + pad
+	local y1 = sy + sel.h + pad
+
+	-- Top-Left Corner Bracket
+	Graphics.fillRect(x0, x0 + arm, y0, y0 + thick, corner_col)
+	Graphics.fillRect(x0, x0 + thick, y0 + thick, y0 + arm, corner_col)
+
+	-- Top-Right Corner Bracket
+	Graphics.fillRect(x1 - arm, x1, y0, y0 + thick, corner_col)
+	Graphics.fillRect(x1 - thick, x1, y0 + thick, y0 + arm, corner_col)
+
+	-- Bottom-Left Corner Bracket
+	Graphics.fillRect(x0, x0 + arm, y1 - thick, y1, corner_col)
+	Graphics.fillRect(x0, x0 + thick, y1 - arm, y1 - thick, corner_col)
+
+	-- Bottom-Right Corner Bracket
+	Graphics.fillRect(x1 - arm, x1, y1 - thick, y1, corner_col)
+	Graphics.fillRect(x1 - thick, x1, y1 - arm, y1 - thick, corner_col)
+end
+
+function DRAW_DOC_INSPECTION_HIGHLIGHT(doc_key)
+	if not INSPECTION or not INSPECTION.active then return end
+	if not INSPECTION.selected then return end
+	for _, sel in ipairs(INSPECTION.selected) do
+		if sel.doc == doc_key then
+			DRAW_HOTSPOT_HIGHLIGHT(sel)
+		end
+	end
+end
+
 function DRAW_INSPECTION_OVERLAY()
 	-- 1. Inspection Toggle Button (bottom-right: x = 288, y = 216, w = 32, h = 24)
 	if INSPECTION.active then
@@ -2282,8 +2481,7 @@ function DRAW_INSPECTION_OVERLAY()
 		return
 	end
 
-	-- 2. Darkening overlay over desk surface (y = 67 to 240)
-	Graphics.fillRect(0, 320, 67, 240, INSPECT_DIM_DESK)
+-- 2. Desk dimming moved to desk render pass
 
 	-- 3. Top-screen data anchors on upper counter shelf
 	if INSPECTION_ANCHORS then
@@ -2298,10 +2496,16 @@ function DRAW_INSPECTION_OVERLAY()
 	if #INSPECTION.selected == 2 then
 		local s1 = INSPECTION.selected[1]
 		local s2 = INSPECTION.selected[2]
-		local cx1 = math.floor(s1.x + s1.w / 2)
-		local cy1 = math.floor(s1.y + s1.h / 2)
-		local cx2 = math.floor(s2.x + s2.w / 2)
-		local cy2 = math.floor(s2.y + s2.h / 2)
+		local d1 = s1.doc and ITEM_BY_KEY and ITEM_BY_KEY[s1.doc]
+		local d2 = s2.doc and ITEM_BY_KEY and ITEM_BY_KEY[s2.doc]
+		local sx1 = (d1 and s1.xo) and (d1.x + s1.xo) or s1.x
+		local sy1 = (d1 and s1.yo) and (d1.y + s1.yo) or s1.y
+		local sx2 = (d2 and s2.xo) and (d2.x + s2.xo) or s2.x
+		local sy2 = (d2 and s2.yo) and (d2.y + s2.yo) or s2.y
+		local cx1 = math.floor(sx1 + s1.w / 2)
+		local cy1 = math.floor(sy1 + s1.h / 2)
+		local cx2 = math.floor(sx2 + s2.w / 2)
+		local cy2 = math.floor(sy2 + s2.h / 2)
 
 		local line_col = INSPECTION.match_found and INSPECT_RED_BORDER or INSPECT_AMBER_BORDER
 		local dx = cx2 - cx1
@@ -2325,38 +2529,13 @@ function DRAW_INSPECTION_OVERLAY()
 		end
 	end
 
-	-- 5. Highlight boxes for selected hotspots
-	for _, sel in ipairs(INSPECTION.selected) do
-		local fill_col = INSPECTION.match_found and INSPECT_RED_FILL or INSPECT_AMBER_FILL
-		local border_col = INSPECTION.match_found and INSPECT_RED_BORDER or INSPECT_AMBER_BORDER
-		-- Semitransparent highlight fill inside hotspot
-		Graphics.fillRect(sel.x, sel.x + sel.w, sel.y, sel.y + sel.h, fill_col)
-
-		-- Pixel-perfect authentic 4-corner brackets framing the hotspot
-		local corner_col = INSPECTION.match_found and Color.new(225, 45, 45, 255) or Color.new(38, 30, 26, 255)
-		local pad = 1
-		local thick = 2
-		local arm = math.min(6, math.max(4, math.floor(sel.h / 2)))
-		local x0 = sel.x - pad
-		local y0 = sel.y - pad
-		local x1 = sel.x + sel.w + pad
-		local y1 = sel.y + sel.h + pad
-
-		-- Top-Left Corner Bracket
-		Graphics.fillRect(x0, x0 + arm, y0, y0 + thick, corner_col)
-		Graphics.fillRect(x0, x0 + thick, y0 + thick, y0 + arm, corner_col)
-
-		-- Top-Right Corner Bracket
-		Graphics.fillRect(x1 - arm, x1, y0, y0 + thick, corner_col)
-		Graphics.fillRect(x1 - thick, x1, y0 + thick, y0 + arm, corner_col)
-
-		-- Bottom-Left Corner Bracket
-		Graphics.fillRect(x0, x0 + arm, y1 - thick, y1, corner_col)
-		Graphics.fillRect(x0, x0 + thick, y1 - arm, y1 - thick, corner_col)
-
-		-- Bottom-Right Corner Bracket
-		Graphics.fillRect(x1 - arm, x1, y1 - thick, y1, corner_col)
-		Graphics.fillRect(x1 - thick, x1, y1 - arm, y1 - thick, corner_col)
+	-- 5. Anchor highlights (if an anchor was selected)
+	if INSPECTION.selected then
+		for _, sel in ipairs(INSPECTION.selected) do
+			if sel.doc == "ANCHOR" or not sel.doc then
+				DRAW_HOTSPOT_HIGHLIGHT(sel)
+			end
+		end
 	end
 
 	-- 6. Negative Match Flash Animation
@@ -2870,15 +3049,15 @@ function STAMP_CODE()
 		elseif STAMP.state=="CLOSED" then
 		STAMP.gravity = 0 
 	end
-	if STAMP.state=="OPENED" and STAMP.x > 40 and STAMP.velocity > 0 and Timer.getTime(timer) >= 10 then
-		Timer.reset(timer)
-		Timer.resume(timer)
+	if STAMP.state=="OPENED" and STAMP.x > 40 and STAMP.velocity > 0 and Timer.getTime(STAMP_TIMER) >= 10 then
+		Timer.reset(STAMP_TIMER)
+		Timer.resume(STAMP_TIMER)
 		STAMP.velocity = STAMP.velocity - STAMP.gravity
 		STAMP.x = STAMP.x - STAMP.velocity
 	end
-	if STAMP.state=="CLOSED" and STAMP.x < 310 and Timer.getTime(timer) >= 10 then
-		Timer.reset(timer)
-		Timer.resume(timer)
+	if STAMP.state=="CLOSED" and STAMP.x < 310 and Timer.getTime(STAMP_TIMER) >= 10 then
+		Timer.reset(STAMP_TIMER)
+		Timer.resume(STAMP_TIMER)
 		STAMP.velocity = STAMP.velocity + STAMP.gravity
 		STAMP.x = STAMP.x + STAMP.velocity
 	end
@@ -3660,15 +3839,21 @@ function DRAW_SPEECH_BUBBLE(x, y, w)
 end
 
 function DIALOG_SYSTEM()
-	if not (FACE.x == 126 and SWITCHER == 0) then
+	if FACE.x < 126 and stamp == nil then
 		if CBtime then
 			Timer.reset(CBtime)
 			Timer.resume(CBtime)
 		end
-		for i = 1, #CHAT do
-			CHATx[i] = nil
-			CHATtime[i] = nil
-			if CHATframe then CHATframe[i] = nil end
+		return
+	end
+
+	if FACE.x ~= 126 or stamp ~= nil then
+		return
+	end
+
+	if SWITCHER == 1 then
+		if CBtime then
+			Timer.pause(CBtime)
 		end
 		return
 	end
@@ -3955,12 +4140,10 @@ if Controls and Controls.shellStatus then
 end
 
 while true do
-	Screen.refresh()
-	Screen.clear(TOP_SCREEN)
-	Screen.clear(BOTTOM_SCREEN)
-	TOUCHx,TOUCHy = Controls.readTouch()
-	STICK.x,STICK.y = Controls.readCirclePad()
-	pad = Controls.read()
+	-- Check if 3DS OS has requested applet termination (e.g. Home Menu exit, Power button)
+	if System and System.checkStatus and System.checkStatus() == 3 then
+		break
+	end
 
 	-- [CLAMSHELL SLEEP & POWER MANAGEMENT]
 	-- Detect physical 3DS lid open/close transitions via PTM service
@@ -3983,6 +4166,12 @@ while true do
 				PAUSE_AUDIO()
 			end
 		end
+
+		-- Clamshell is closed: DO NOT poll inputs, clear screens, render, or flip framebuffers.
+		-- Service APT events (sleep / wake transitions) via waitVblankStart().
+		-- In code.bin, waitVblankStart() detects shell == closed and skips gspWaitForVBlank()
+		-- to prevent deadlock while the display hardware is off.
+		Screen.waitVblankStart()
 	else
 		if not PREV_SHELL_OPEN then
 			PREV_SHELL_OPEN = true
@@ -3996,10 +4185,16 @@ while true do
 				RESUME_AUDIO()
 			end
 		end
-	end
 
-	--OptionsOP()
-	if menu==2 then
+		Screen.refresh()
+		Screen.clear(TOP_SCREEN)
+		Screen.clear(BOTTOM_SCREEN)
+		TOUCHx,TOUCHy = Controls.readTouch()
+		STICK.x,STICK.y = Controls.readCirclePad()
+		pad = Controls.read()
+
+		--OptionsOP()
+		if menu==2 then
 		Graphics.initBlend(BOTTOM_SCREEN)
 		-- Process delayed correct inspection rewards (10s suspense delay)
 		local r_idx = 1
@@ -4132,9 +4327,17 @@ while true do
 			TOUCH="NOTHING"
 		end
 		Graphics.drawPartialImage(0, 67, 0, 77, 320, 173, BKG_BTMS)
+		if INSPECTION and INSPECTION.active then
+			Graphics.fillRect(0, 320, 67, 240, INSPECT_DIM_DESK)
+		end
 		for i = #DESKTOP, 1, -1 do
 			local itm = ITEM_BY_KEY[DESKTOP[i]]
-			if itm and itm.now == 0 then LOAD_IMAGE(itm, itm.key) end
+			if itm and itm.now == 0 then
+				LOAD_IMAGE(itm, itm.key)
+				if INSPECTION and INSPECTION.active then
+					DRAW_DOC_INSPECTION_HIGHLIGHT(itm.key)
+				end
+			end
 		end
 		Graphics.drawPartialImage(0, 0, 0, 0, 320, 77, BKG_BTMS)
 		for i = #DESKTOP, 1, -1 do
@@ -4202,6 +4405,7 @@ while true do
 		end
 		if FACE.x<126 and stamp==nil then
 			FACE.x = FACE.x+2.5
+			if FACE.x > 126 then FACE.x = 126 end
 			FACE.y=-(5*math.cos(15*(FACE.x-126)))+109
 			if FACE.x>120 and SWITCHER==1 then
 				SWITCHER=0
@@ -4391,11 +4595,32 @@ while true do
 			end
 		end
 
-		if Controls.check(pad, KEY_X) and not Controls.check(oldpad, KEY_X) and FADE_STATE == "NONE" and INSPECTION.active then
-			if INSPECTION.can_detain then
-				EXECUTE_DETAIN()
-			elseif INSPECTION.match_found and not INSPECTION.interrogated and not INSPECTION.interrogating then
-				START_INTERROGATION()
+		if Controls.check(pad, KEY_X) and not Controls.check(oldpad, KEY_X) and FADE_STATE == "NONE" then
+			if INSPECTION.active and (INSPECTION.can_detain or (INSPECTION.match_found and not INSPECTION.interrogated and not INSPECTION.interrogating)) then
+				if INSPECTION.can_detain then
+					EXECUTE_DETAIN()
+				elseif INSPECTION.match_found and not INSPECTION.interrogated and not INSPECTION.interrogating then
+					START_INTERROGATION()
+				end
+			else
+				if INSPECTION.active then
+					INSPECTION.active = false
+					INSPECTION.selected = {}
+					INSPECTION.match_found = false
+					INSPECTION.match_reason = nil
+					PLAY_SFX("inspect_close")
+				end
+				if STAMP.state == "CLOSED" then
+					STAMP.state = "OPENED"
+					STAMP.velocity = 23
+					STAMP.gravity = 0
+					PLAY_SFX("stampbar_open")
+				elseif STAMP.state == "OPENED" then
+					STAMP.state = "CLOSED"
+					STAMP.velocity = 0
+					STAMP.gravity = 0
+					PLAY_SFX("stampbar_close")
+				end
 			end
 		end
 
@@ -5282,7 +5507,8 @@ while true do
 		System.takeScreenshot("/PapersPlease-"..Th.."-"..Tm.."-"..Ts..".bmp",false)
 		activatescreenshot=255
 	end
-	Screen.flip()
-	Screen.waitVblankStart()
-	oldpad = pad
+		Screen.flip()
+		Screen.waitVblankStart()
+		oldpad = pad
+	end
 end

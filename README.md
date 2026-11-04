@@ -137,9 +137,11 @@ Three standalone arcade modes offer replayable challenges outside the narrative 
 | **Stylus / Touchscreen** | Drag & drop documents between desk and counter shelf; open/close rulebook; flip rulebook pages; drag stamp rack; stamp passports; tap menu buttons |
 | **A Button** | Call next entrant into the booth (`Press A to Call next`); confirm selections; proceed to next day |
 | **B Button** | Return to previous menu / Main Menu; cancel prompts |
-| **START Button** | Pause menu (allows toggling in-game settings: audio, text alignment, shadows, dialogue bubbles) |
-| **R Button** | Quick-toggle stamp drawer bar open / closed |
+| **X Button** | Quick-toggle stamp drawer bar open / closed; Interrogate / Detain in Inspection Mode |
+| **Y Button** | Toggle Inspection Mode open / closed |
+| **R Button** | Quick-toggle metal security shutter open / closed |
 | **L Button** | Capture clean screenshot (saved directly to SD card root as `PapersPlease-H-M-S.bmp`) |
+| **START Button** | Pause menu (allows toggling in-game settings: audio, text alignment, shadows, dialogue bubbles) |
 
 ---
 

@@ -462,74 +462,74 @@ end
 
 INSPECTION_HOTSPOTS_PASSPORT = {
 	[1] = {
-		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
-		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 22, yo = 101, w = 55,  h = 9 },
-		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 22, yo = 110, w = 30,  h = 9 },
-		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 22, yo = 119, w = 55,  h = 9 },
-		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 22, yo = 128, w = 55,  h = 9 },
-		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 138, w = 115, h = 10 },
-		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 55, yo = 148, w = 65,  h = 10 },
-		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 83, yo = 88,  w = 35,  h = 45 }
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 88,  w = 72,  h = 10 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 7,  yo = 100, w = 72,  h = 8 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 7,  yo = 109, w = 72,  h = 8 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 7,  yo = 118, w = 72,  h = 8 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 7,  yo = 127, w = 72,  h = 8 },
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 7,  yo = 137, w = 116, h = 9 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 50, yo = 147, w = 72,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 83, yo = 88,  w = 40,  h = 48 }
 	},
 	[2] = {
-		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
-		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 86,  w = 115, h = 10 },
-		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 68, yo = 98,  w = 55,  h = 9 },
-		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 68, yo = 106, w = 30,  h = 9 },
-		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 68, yo = 114, w = 55,  h = 9 },
-		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 68, yo = 122, w = 55,  h = 9 },
-		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 8,  yo = 148, w = 80,  h = 10 },
-		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 8,  yo = 98,  w = 35,  h = 45 }
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 85,  w = 115, h = 9 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 47, yo = 97,  w = 76,  h = 8 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 47, yo = 105, w = 76,  h = 8 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 47, yo = 113, w = 76,  h = 8 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 47, yo = 121, w = 76,  h = 8 },
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 72, yo = 131, w = 52,  h = 12 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 8,  yo = 146, w = 80,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 8,  yo = 98,  w = 40,  h = 48 }
 	},
 	[3] = {
-		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
-		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 85,  w = 115, h = 10 },
-		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 69, yo = 96,  w = 55,  h = 9 },
-		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 69, yo = 104, w = 30,  h = 9 },
-		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 69, yo = 112, w = 55,  h = 9 },
-		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 69, yo = 120, w = 55,  h = 9 },
-		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 60, yo = 144, w = 65,  h = 10 },
-		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 9,  yo = 96,  w = 35,  h = 45 }
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 84,  w = 115, h = 9 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 47, yo = 95,  w = 76,  h = 8 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 47, yo = 103, w = 76,  h = 8 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 47, yo = 111, w = 76,  h = 8 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 47, yo = 119, w = 76,  h = 8 },
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 7,  yo = 145, w = 40,  h = 12 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 58, yo = 143, w = 65,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 9,  yo = 96,  w = 40,  h = 48 }
 	},
 	[4] = {
-		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
-		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 97,  w = 115, h = 10 },
-		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 68, yo = 107, w = 55,  h = 9 },
-		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 68, yo = 115, w = 30,  h = 9 },
-		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 68, yo = 123, w = 55,  h = 9 },
-		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 68, yo = 131, w = 55,  h = 9 },
-		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 55, yo = 148, w = 65,  h = 10 },
-		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 8,  yo = 107, w = 35,  h = 45 }
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 60, yo = 86,  w = 64,  h = 9 },
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 96,  w = 115, h = 9 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 47, yo = 106, w = 76,  h = 8 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 47, yo = 114, w = 76,  h = 8 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 47, yo = 122, w = 76,  h = 8 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 47, yo = 130, w = 76,  h = 8 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 52, yo = 146, w = 70,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 8,  yo = 107, w = 40,  h = 48 }
 	},
 	[5] = {
-		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
-		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 86,  w = 115, h = 10 },
-		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 26, yo = 98,  w = 55,  h = 9 },
-		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 26, yo = 106, w = 30,  h = 9 },
-		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 26, yo = 114, w = 55,  h = 9 },
-		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 26, yo = 122, w = 55,  h = 9 },
-		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 55, yo = 148, w = 65,  h = 10 },
-		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 85, yo = 96,  w = 35,  h = 45 }
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 85,  w = 115, h = 9 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 6,  yo = 97,  w = 76,  h = 8 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 6,  yo = 105, w = 76,  h = 8 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 6,  yo = 113, w = 76,  h = 8 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 6,  yo = 121, w = 76,  h = 8 },
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 7,  yo = 134, w = 70,  h = 12 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 52, yo = 146, w = 70,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 85, yo = 96,  w = 40,  h = 48 }
 	},
 	[6] = {
-		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
-		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 97,  w = 115, h = 10 },
-		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 68, yo = 107, w = 55,  h = 9 },
-		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 68, yo = 115, w = 30,  h = 9 },
-		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 68, yo = 123, w = 55,  h = 9 },
-		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 68, yo = 131, w = 55,  h = 9 },
-		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 55, yo = 147, w = 65,  h = 10 },
-		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 8,  yo = 106, w = 35,  h = 45 }
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 24, yo = 86,  w = 84,  h = 9 },
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 96,  w = 115, h = 9 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 47, yo = 106, w = 76,  h = 8 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 47, yo = 114, w = 76,  h = 8 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 47, yo = 122, w = 76,  h = 8 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 47, yo = 130, w = 76,  h = 8 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 52, yo = 146, w = 70,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 8,  yo = 106, w = 40,  h = 48 }
 	},
 	[8] = {
-		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 8,  yo = 8,   w = 115, h = 14 },
-		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 97,  w = 115, h = 10 },
-		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 25, yo = 111, w = 55,  h = 9 },
-		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 25, yo = 119, w = 30,  h = 9 },
-		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 25, yo = 127, w = 55,  h = 9 },
-		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 25, yo = 135, w = 55,  h = 9 },
-		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 10, yo = 145, w = 65,  h = 10 },
-		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 84, yo = 107, w = 35,  h = 45 }
+		{ id = "PASSPORT.NATION",   cat = "NATION",   xo = 36, yo = 86,  w = 58,  h = 9 },
+		{ id = "PASSPORT.NAME",     cat = "NAME",     xo = 8,  yo = 96,  w = 115, h = 9 },
+		{ id = "PASSPORT.DOB",      cat = "DOB",      xo = 6,  yo = 110, w = 76,  h = 8 },
+		{ id = "PASSPORT.GENDER",   cat = "GENDER",   xo = 6,  yo = 118, w = 76,  h = 8 },
+		{ id = "PASSPORT.CITY",     cat = "CITY",     xo = 6,  yo = 126, w = 76,  h = 8 },
+		{ id = "PASSPORT.EXP_DATE", cat = "EXP_DATE", xo = 6,  yo = 134, w = 76,  h = 8 },
+		{ id = "PASSPORT.ID_NUM",   cat = "ID_NUM",   xo = 8,  yo = 144, w = 70,  h = 10 },
+		{ id = "PASSPORT.PHOTO",    cat = "PHOTO",    xo = 84, yo = 107, w = 40,  h = 48 }
 	}
 }
 INSPECTION_HOTSPOTS_PASSPORT[7] = INSPECTION_HOTSPOTS_PASSPORT[2]
@@ -537,29 +537,88 @@ INSPECTION_HOTSPOTS_PASSPORT[7] = INSPECTION_HOTSPOTS_PASSPORT[2]
 INSPECTION_HOTSPOTS = {
 	PASSPORT = INSPECTION_HOTSPOTS_PASSPORT[1],
 	ENTRYPERMIT = {
-		{ id = "PERMIT.NAME",     cat = "NAME",     xo = 15, yo = 85,  w = 110, h = 14 },
-		{ id = "PERMIT.ID_NUM",   cat = "ID_NUM",   xo = 15, yo = 116, w = 110, h = 14 },
-		{ id = "PERMIT.PURPOSE",  cat = "PURPOSE",  xo = 50, yo = 133, w = 80,  h = 14 },
-		{ id = "PERMIT.DURATION", cat = "DURATION", xo = 50, yo = 149, w = 80,  h = 14 },
-		{ id = "PERMIT.EXP_DATE", cat = "EXP_DATE", xo = 50, yo = 165, w = 80,  h = 14 },
+		{ id = "PERMIT.NAME",     cat = "NAME",     xo = 15, yo = 84,  w = 120, h = 14 },
+		{ id = "PERMIT.ID_NUM",   cat = "ID_NUM",   xo = 15, yo = 115, w = 120, h = 14 },
+		{ id = "PERMIT.PURPOSE",  cat = "PURPOSE",  xo = 15, yo = 132, w = 120, h = 14 },
+		{ id = "PERMIT.DURATION", cat = "DURATION", xo = 15, yo = 148, w = 120, h = 14 },
+		{ id = "PERMIT.EXP_DATE", cat = "EXP_DATE", xo = 15, yo = 164, w = 120, h = 14 },
 		{ id = "PERMIT.SEAL",     cat = "SEAL_MOA", xo = 10, yo = 11,  w = 45,  h = 35 }
 	},
 	IDCARD = {
-		{ id = "IDCARD.DISTRICT", cat = "DISTRICT", xo = 6,  yo = 8,   w = 120, h = 12 },
-		{ id = "IDCARD.NAME",     cat = "NAME",     xo = 45, yo = 18,  w = 80,  h = 20 },
-		{ id = "IDCARD.DOB",      cat = "DOB",      xo = 55, yo = 37,  w = 70,  h = 11 },
-		{ id = "IDCARD.HEIGHT",   cat = "HEIGHT",   xo = 55, yo = 47,  w = 70,  h = 11 },
-		{ id = "IDCARD.WEIGHT",   cat = "WEIGHT",   xo = 55, yo = 57,  w = 70,  h = 11 },
-		{ id = "IDCARD.PHOTO",    cat = "PHOTO",    xo = 4,  yo = 17,  w = 35,  h = 45 }
+		{ id = "IDCARD.DISTRICT", cat = "DISTRICT", xo = 6,  yo = 8,   w = 114, h = 9 },
+		{ id = "IDCARD.NAME",     cat = "NAME",     xo = 45, yo = 18,  w = 77,  h = 19 },
+		{ id = "IDCARD.DOB",      cat = "DOB",      xo = 45, yo = 38,  w = 77,  h = 9 },
+		{ id = "IDCARD.HEIGHT",   cat = "HEIGHT",   xo = 45, yo = 48,  w = 77,  h = 9 },
+		{ id = "IDCARD.WEIGHT",   cat = "WEIGHT",   xo = 45, yo = 58,  w = 77,  h = 9 },
+		{ id = "IDCARD.PHOTO",    cat = "PHOTO",    xo = 4,  yo = 17,  w = 40,  h = 48 }
 	},
 	WORKPASS = {
-		{ id = "WORKPASS.NAME",     cat = "NAME",     xo = 20, yo = 60,  w = 100, h = 14 },
-		{ id = "WORKPASS.FIELD",    cat = "FIELD",    xo = 20, yo = 76,  w = 100, h = 14 },
-		{ id = "WORKPASS.EXP_DATE", cat = "EXP_DATE", xo = 20, yo = 92,  w = 100, h = 14 },
+		{ id = "WORKPASS.NAME",     cat = "NAME",     xo = 8,  yo = 59,  w = 125, h = 14 },
+		{ id = "WORKPASS.FIELD",    cat = "FIELD",    xo = 8,  yo = 75,  w = 125, h = 14 },
+		{ id = "WORKPASS.EXP_DATE", cat = "EXP_DATE", xo = 8,  yo = 91,  w = 125, h = 14 },
 		{ id = "WORKPASS.SEAL",     cat = "SEAL_MOL", xo = 6,  yo = 7,   w = 45,  h = 35 }
 	},
 	ENTRYTICKET = {
 		{ id = "TICKET.EXP_DATE", cat = "EXP_DATE", xo = 65, yo = 26,  w = 60,  h = 14 }
+	}
+}
+
+INSPECTION_HOTSPOTS_RULEBOOK = {
+	[2] = {
+		{ id = "RULEBOOK.RULE_FOR",  cat = "RULE_FOREIGNERS", xo = 120, yo = 40, w = 110, h = 18 },
+		{ id = "RULEBOOK.RULE_DATE", cat = "TODAY_DATE",      xo = 120, yo = 60, w = 110, h = 18 },
+		{ id = "RULEBOOK.RULE_SEAL", cat = "RULE_SEAL",       xo = 120, yo = 80, w = 110, h = 25 }
+	},
+	[4] = {
+		-- Antegria Issuing Cities
+		{ id = "RULEBOOK.CITY_ANTEGRIA_1", cat = "CITY", xo = 38, yo = 45, w = 68, h = 9 },
+		{ id = "RULEBOOK.CITY_ANTEGRIA_2", cat = "CITY", xo = 38, yo = 55, w = 68, h = 9 },
+		{ id = "RULEBOOK.CITY_ANTEGRIA_3", cat = "CITY", xo = 38, yo = 65, w = 68, h = 9 },
+		-- Impor Issuing Cities
+		{ id = "RULEBOOK.CITY_IMPOR_1", cat = "CITY", xo = 168, yo = 45, w = 48, h = 9 },
+		{ id = "RULEBOOK.CITY_IMPOR_2", cat = "CITY", xo = 168, yo = 55, w = 48, h = 9 },
+		{ id = "RULEBOOK.CITY_IMPOR_3", cat = "CITY", xo = 168, yo = 65, w = 48, h = 9 }
+	},
+	[5] = {
+		-- Arstotzka Districts
+		{ id = "RULEBOOK.DISTRICT_1", cat = "DISTRICT", xo = 25, yo = 50,  w = 60, h = 8 },
+		{ id = "RULEBOOK.DISTRICT_2", cat = "DISTRICT", xo = 25, yo = 60,  w = 60, h = 8 },
+		{ id = "RULEBOOK.DISTRICT_3", cat = "DISTRICT", xo = 25, yo = 70,  w = 60, h = 8 },
+		{ id = "RULEBOOK.DISTRICT_4", cat = "DISTRICT", xo = 25, yo = 80,  w = 60, h = 8 },
+		{ id = "RULEBOOK.DISTRICT_5", cat = "DISTRICT", xo = 25, yo = 90,  w = 60, h = 8 },
+		{ id = "RULEBOOK.DISTRICT_6", cat = "DISTRICT", xo = 25, yo = 100, w = 60, h = 8 },
+		{ id = "RULEBOOK.DISTRICT_7", cat = "DISTRICT", xo = 25, yo = 110, w = 60, h = 8 },
+		{ id = "RULEBOOK.DISTRICT_8", cat = "DISTRICT", xo = 25, yo = 120, w = 60, h = 8 },
+		-- Arstotzka Issuing Cities
+		{ id = "RULEBOOK.CITY_ARSTOTZKA_1", cat = "CITY", xo = 138, yo = 91,  w = 60, h = 8 },
+		{ id = "RULEBOOK.CITY_ARSTOTZKA_2", cat = "CITY", xo = 138, yo = 101, w = 60, h = 8 },
+		{ id = "RULEBOOK.CITY_ARSTOTZKA_3", cat = "CITY", xo = 138, yo = 111, w = 60, h = 8 }
+	},
+	[6] = {
+		-- Kolechia Issuing Cities
+		{ id = "RULEBOOK.CITY_KOLECHIA_1", cat = "CITY", xo = 38, yo = 45, w = 68, h = 9 },
+		{ id = "RULEBOOK.CITY_KOLECHIA_2", cat = "CITY", xo = 38, yo = 55, w = 68, h = 9 },
+		{ id = "RULEBOOK.CITY_KOLECHIA_3", cat = "CITY", xo = 38, yo = 65, w = 68, h = 9 },
+		-- Obristan Issuing Cities
+		{ id = "RULEBOOK.CITY_OBRISTAN_1", cat = "CITY", xo = 168, yo = 45, w = 48, h = 9 },
+		{ id = "RULEBOOK.CITY_OBRISTAN_2", cat = "CITY", xo = 168, yo = 55, w = 48, h = 9 },
+		{ id = "RULEBOOK.CITY_OBRISTAN_3", cat = "CITY", xo = 168, yo = 65, w = 48, h = 9 }
+	},
+	[7] = {
+		-- Republia Issuing Cities
+		{ id = "RULEBOOK.CITY_REPUBLIA_1", cat = "CITY", xo = 38, yo = 45, w = 68, h = 9 },
+		{ id = "RULEBOOK.CITY_REPUBLIA_2", cat = "CITY", xo = 38, yo = 55, w = 68, h = 9 },
+		{ id = "RULEBOOK.CITY_REPUBLIA_3", cat = "CITY", xo = 38, yo = 65, w = 68, h = 9 },
+		-- United Federation Issuing Cities
+		{ id = "RULEBOOK.CITY_UF_1", cat = "CITY", xo = 164, yo = 45, w = 58, h = 9 },
+		{ id = "RULEBOOK.CITY_UF_2", cat = "CITY", xo = 164, yo = 55, w = 58, h = 9 },
+		{ id = "RULEBOOK.CITY_UF_3", cat = "CITY", xo = 164, yo = 65, w = 58, h = 9 }
+	},
+	[8] = {
+		{ id = "RULEBOOK.SEAL_MOA", cat = "SEAL_MOA", xo = 15,  yo = 100, w = 86, h = 42 },
+		{ id = "RULEBOOK.TEXT_MOA", cat = "SEAL_MOA", xo = 15,  yo = 25,  w = 86, h = 70 },
+		{ id = "RULEBOOK.SEAL_MOL", cat = "SEAL_MOL", xo = 133, yo = 22,  w = 92, h = 78 },
+		{ id = "RULEBOOK.TEXT_MOL", cat = "SEAL_MOL", xo = 133, yo = 104, w = 92, h = 42 }
 	}
 }
 
