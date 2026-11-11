@@ -502,5 +502,85 @@ def generate_all():
     sum_btm.save(os.path.join(ASSETS_DIR, 'DAY_SUMMARY_BKG.png'), 'PNG')
     print(f'Saved {sum_btm_path}: {sum_btm.size}')
 
+    # =========================================================================
+    # FINGERPRINTING & DACTYLOSCOPY ASSETS (Papers, Please 3DS Demake)
+    # =========================================================================
+
+    # 1. SCANNER_PAD.png (32x48 px: Frame 0 = Unlit 32x24, Frame 1 = Lit 32x24)
+    scanner_pad = Image.new('RGBA', (32, 48), (0, 0, 0, 0))
+    d_scan = ImageDraw.Draw(scanner_pad)
+
+    # Frame 0: Unlit / Idle (0..23)
+    d_scan.rectangle([(0, 0), (31, 23)], fill=C_DESK_DARK)
+    d_scan.rectangle([(1, 1), (30, 22)], outline=C_DESK_HIGHLIGHT)
+    d_scan.rectangle([(3, 3), (28, 20)], fill=(22, 28, 24))
+    d_scan.rectangle([(3, 3), (28, 20)], outline=(35, 42, 38))
+    # Dim glass scanlines
+    for gy in range(5, 19, 2):
+        d_scan.line([(5, gy), (26, gy)], fill=(28, 36, 30))
+    # Dim fingerprint icon in glass center
+    for r in range(1, 6):
+        d_scan.ellipse([(16 - r * 2, 12 - r * 1.5), (16 + r * 2, 12 + r * 1.5)], outline=(36, 48, 40))
+
+    # Frame 1: Lit / Armed (24..47)
+    d_scan.rectangle([(0, 24), (31, 47)], fill=C_DESK_DARK)
+    d_scan.rectangle([(0, 24), (31, 47)], outline=(255, 195, 45, 230))
+    d_scan.rectangle([(1, 25), (30, 46)], outline=(200, 150, 30, 200))
+    d_scan.rectangle([(3, 27), (28, 44)], fill=(20, 60, 32))
+    d_scan.rectangle([(3, 27), (28, 44)], outline=(60, 190, 85))
+    # Glowing green scanlines
+    for gy in range(29, 43, 2):
+        d_scan.line([(5, gy), (26, gy)], fill=(45, 140, 65))
+    # Glowing sensor grid / fingerprint silhouette
+    for r in range(1, 6):
+        d_scan.ellipse([(16 - r * 2, 36 - r * 1.5), (16 + r * 2, 36 + r * 1.5)], outline=(90, 240, 120))
+    d_scan.point([(16, 36)], fill=(150, 255, 180))
+
+    scanner_path = os.path.join(ASSETS_DIR, 'SCANNER_PAD.png')
+    scanner_pad.save(scanner_path, 'PNG')
+    print(f'Saved {scanner_path}: {scanner_pad.size}')
+
+    # 2. Authentic Papers, Please Assets from original_assets/
+    orig_papers = os.path.join(PROJECT_ROOT, 'original_assets', 'papers')
+    orig_root = os.path.join(PROJECT_ROOT, 'original_assets')
+    
+    # FINGERPRINTSLIP_TEX.png (FingerprintsInner.png: 170x60 px)
+    orig_fp_in = os.path.join(orig_papers, 'FingerprintsInner.png')
+    if os.path.exists(orig_fp_in):
+        shutil.copyfile(orig_fp_in, os.path.join(ASSETS_DIR, 'FINGERPRINTSLIP_TEX.png'))
+        print(f'Copied {orig_fp_in} -> ASSETS/FINGERPRINTSLIP_TEX.png')
+
+    # FINGERPRINTSLIP_TEX2.png (FingerprintsOuter.png: 87x30 px)
+    orig_fp_out = os.path.join(orig_papers, 'FingerprintsOuter.png')
+    if os.path.exists(orig_fp_out):
+        shutil.copyfile(orig_fp_out, os.path.join(ASSETS_DIR, 'FINGERPRINTSLIP_TEX2.png'))
+        print(f'Copied {orig_fp_out} -> ASSETS/FINGERPRINTSLIP_TEX2.png')
+
+    # IDENTITYRECORD_TEX.png (IdentityRecordInner.png: 183x98 px)
+    orig_id_in = os.path.join(orig_papers, 'IdentityRecordInner.png')
+    if os.path.exists(orig_id_in):
+        shutil.copyfile(orig_id_in, os.path.join(ASSETS_DIR, 'IDENTITYRECORD_TEX.png'))
+        print(f'Copied {orig_id_in} -> ASSETS/IDENTITYRECORD_TEX.png')
+
+    # IDENTITYRECORD_TEX2.png (IdentityRecordOuter.png: 93x44 px)
+    orig_id_out = os.path.join(orig_papers, 'IdentityRecordOuter.png')
+    if os.path.exists(orig_id_out):
+        shutil.copyfile(orig_id_out, os.path.join(ASSETS_DIR, 'IDENTITYRECORD_TEX2.png'))
+        print(f'Copied {orig_id_out} -> ASSETS/IDENTITYRECORD_TEX2.png')
+
+    # FINGERPRINTSHEET.png (FingerSworls.png converted to transparent 32-bit RGBA: 96x320 px)
+    orig_sworls = os.path.join(orig_root, 'FingerSworls.png')
+    if os.path.exists(orig_sworls):
+        import numpy as np
+        sw = Image.open(orig_sworls)
+        arr = np.array(sw)
+        rgba = np.zeros((320, 96, 4), dtype=np.uint8)
+        rgba[arr == 1] = [20, 18, 16, 255] # authentic dark ink
+        rgba[arr != 1] = [0, 0, 0, 0] # transparent
+        sheet_im = Image.fromarray(rgba, 'RGBA')
+        sheet_path = os.path.join(ASSETS_DIR, 'FINGERPRINTSHEET.png')
+        sheet_im.save(sheet_path, 'PNG')
+        print(f'Converted {orig_sworls} -> {sheet_path}: {sheet_im.size}')
+
 if __name__ == '__main__':
     generate_all()

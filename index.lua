@@ -1,7 +1,7 @@
 -- [GAME METADATA & VERSION]
 GAME_AUTHOR = "Gab2006"
 GAME_VERSION_MAJOR = 1
-GAME_VERSION_MINOR = 3
+GAME_VERSION_MINOR = 4
 GAME_VERSION_MICRO = 2
 GAME_VERSION = GAME_VERSION_MAJOR .. "." .. GAME_VERSION_MINOR .. "." .. GAME_VERSION_MICRO
 
@@ -94,7 +94,8 @@ local SFX_MAP = {
 	inspect_highlight = "inspect-highlight.wav",
 	inspect_unhighlight = "inspect-unhighlight.wav",
 	inspect_interrogateon = "inspect-interrogateon.wav",
-	border_callguards = "border-callguards.wav"
+	border_callguards = "border-callguards.wav",
+	photo_print = "photo-print.wav"
 }
 
 function PLAY_SFX(id)
@@ -284,6 +285,12 @@ function loadtex()
 	DETAIN_BTN_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/DetainButton.png")
 	CLOCK_PIN_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/ClockPin.png")
 	INSPECT_LINE_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/InspectLine.png")
+	SCANNER_PAD_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/SCANNER_PAD.png")
+	FINGERPRINTSLIP_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/FINGERPRINTSLIP_TEX.png")
+	FINGERPRINTSLIP_TEX2 = Graphics.loadImage(System.currentDirectory().."ASSETS/FINGERPRINTSLIP_TEX2.png")
+	IDENTITYRECORD_TEX = Graphics.loadImage(System.currentDirectory().."ASSETS/IDENTITYRECORD_TEX.png")
+	IDENTITYRECORD_TEX2 = Graphics.loadImage(System.currentDirectory().."ASSETS/IDENTITYRECORD_TEX2.png")
+	FINGERPRINTSHEET = Graphics.loadImage(System.currentDirectory().."ASSETS/FINGERPRINTSHEET.png")
 end
 function GarbageCollection()
 	if BKG_BTMS~= nil then
@@ -364,6 +371,30 @@ function GarbageCollection()
 		if INSPECT_LINE_TEX ~= nil then
 			Graphics.freeImage(INSPECT_LINE_TEX)
 			INSPECT_LINE_TEX = nil
+		end
+		if SCANNER_PAD_TEX ~= nil then
+			Graphics.freeImage(SCANNER_PAD_TEX)
+			SCANNER_PAD_TEX = nil
+		end
+		if FINGERPRINTSLIP_TEX ~= nil then
+			Graphics.freeImage(FINGERPRINTSLIP_TEX)
+			FINGERPRINTSLIP_TEX = nil
+		end
+		if FINGERPRINTSLIP_TEX2 ~= nil then
+			Graphics.freeImage(FINGERPRINTSLIP_TEX2)
+			FINGERPRINTSLIP_TEX2 = nil
+		end
+		if IDENTITYRECORD_TEX ~= nil then
+			Graphics.freeImage(IDENTITYRECORD_TEX)
+			IDENTITYRECORD_TEX = nil
+		end
+		if IDENTITYRECORD_TEX2 ~= nil then
+			Graphics.freeImage(IDENTITYRECORD_TEX2)
+			IDENTITYRECORD_TEX2 = nil
+		end
+		if FINGERPRINTSHEET ~= nil then
+			Graphics.freeImage(FINGERPRINTSHEET)
+			FINGERPRINTSHEET = nil
 		end
 	end
 	Graphics.freeImage(NORMAL_FONT)
@@ -454,6 +485,115 @@ INSPECTION = {
 	flash_timer = 0
 }
 
+SCANNER = {
+	active = false,
+	scanned = false,
+	x = 75,
+	y = 38,
+	w = 32,
+	h = 24
+}
+FINGERPRINTSLIP = nil
+IDENTITYRECORD = nil
+
+function CLEAR_FINGERPRINT_SLIP()
+	if FINGERPRINTSLIP then
+		for i = #DESKTOP, 1, -1 do
+			if DESKTOP[i] == "FINGERPRINTSLIP" then
+				table.remove(DESKTOP, i)
+			end
+		end
+		for i = #ALLITEMS, 1, -1 do
+			if ALLITEMS[i] == FINGERPRINTSLIP then
+				table.remove(ALLITEMS, i)
+			end
+		end
+		if ITEM_BY_KEY then
+			ITEM_BY_KEY["FINGERPRINTSLIP"] = nil
+		end
+		FINGERPRINTSLIP = nil
+	end
+	if IDENTITYRECORD then
+		for i = #DESKTOP, 1, -1 do
+			if DESKTOP[i] == "IDENTITYRECORD" then
+				table.remove(DESKTOP, i)
+			end
+		end
+		for i = #ALLITEMS, 1, -1 do
+			if ALLITEMS[i] == IDENTITYRECORD then
+				table.remove(ALLITEMS, i)
+			end
+		end
+		if ITEM_BY_KEY then
+			ITEM_BY_KEY["IDENTITYRECORD"] = nil
+		end
+		IDENTITYRECORD = nil
+	end
+	SCANNER.active = false
+	SCANNER.scanned = false
+	if PERSON then
+		PERSON.name_cleared = false
+		PERSON.photo_cleared = false
+	end
+end
+
+function SPAWN_FINGERPRINT_SLIP()
+	if FINGERPRINTSLIP_TEX == nil or FINGERPRINTSLIP_TEX2 == nil or IDENTITYRECORD_TEX == nil or IDENTITYRECORD_TEX2 == nil then
+		loadtex()
+	end
+	-- 1. Physical Fingerprint Slip from the applicant (170x60 px)
+	FINGERPRINTSLIP = {
+		key = "FINGERPRINTSLIP",
+		is_fingerprint_slip = true,
+		x = 10,
+		y = 160,
+		target_y = 160,
+		now = 0,
+		rot = -0.08,
+		status = "IDLE",
+		step_feed = 0,
+		velocity = 0,
+		gravity = 0,
+		tex = FINGERPRINTSLIP_TEX,
+		tex2 = FINGERPRINTSLIP_TEX2
+	}
+	-- 2. Official MOA Identity Record database dossier from printer (183x98 px)
+	IDENTITYRECORD = {
+		key = "IDENTITYRECORD",
+		is_identity_record = true,
+		x = 65,
+		y = -100,
+		target_y = 75,
+		now = 0,
+		rot = 0.10,
+		status = "PRINTING",
+		step_feed = 0,
+		velocity = 0,
+		gravity = 0,
+		tex = IDENTITYRECORD_TEX,
+		tex2 = IDENTITYRECORD_TEX2
+	}
+	if ITEM_BY_KEY then
+		ITEM_BY_KEY["FINGERPRINTSLIP"] = FINGERPRINTSLIP
+		ITEM_BY_KEY["IDENTITYRECORD"] = IDENTITYRECORD
+	end
+	table.insert(DESKTOP, 1, "IDENTITYRECORD")
+	table.insert(ALLITEMS, 1, IDENTITYRECORD)
+	table.insert(DESKTOP, 1, "FINGERPRINTSLIP")
+	table.insert(ALLITEMS, 1, FINGERPRINTSLIP)
+	PLAY_SFX("photo_print")
+
+	-- If the biometric check is legitimate, clear the infraction flag immediately upon official verification!
+	if PERSON then
+		if PERSON.has_alias and PERSON.alias then
+			PERSON.name_cleared = true
+		end
+		if PERSON.photo_verified then
+			PERSON.photo_cleared = true
+		end
+	end
+end
+
 function RESET_INSPECTION()
 	INSPECTION.active = false
 	INSPECTION.selected = {}
@@ -467,6 +607,7 @@ function RESET_INSPECTION()
 	INSPECTION.detained = false
 	INSPECTION.line_timer = 0
 	INSPECTION.flash_timer = 0
+	CLEAR_FINGERPRINT_SLIP()
 end
 
 TRAVELER_DOCS = {
@@ -1421,6 +1562,111 @@ function TOUCH_CHECK(word,key)
 
 		return
 	end
+	if word.is_fingerprint_slip or word.is_identity_record then
+		local w = 170
+		local h = 60
+		if word.is_fingerprint_slip then
+			w = (word.now == 1) and 87 or 170
+			h = (word.now == 1) and 30 or 60
+		else
+			w = (word.now == 1) and 93 or 183
+			h = (word.now == 1) and 44 or 98
+		end
+
+		if TOUCHx > 0 and TOUCHy > 0 then
+			local touch_y_min = (word.now == 0) and math.max(word.y, 68) or word.y
+			if TOUCH == "ACTIVE" and TOUCHx >= word.x and TOUCHx <= word.x + w and TOUCHy >= touch_y_min and TOUCHy <= word.y + h then
+				TOUCH = key
+				word.oldtouchx = TOUCHx - word.x
+				word.oldtouchy = TOUCHy - word.y
+				word.velocity = 0
+				word.gravity = 0
+				if word.status == "PRINTING" then
+					word.status = "IDLE"
+					PLAY_SFX("printer_tear")
+				else
+					PLAY_SFX("paper_dragstart")
+				end
+			end
+
+			if TOUCH == key then
+				word.oldtouchx = word.oldtouchx or (TOUCHx - word.x)
+				word.oldtouchy = word.oldtouchy or (TOUCHy - word.y)
+
+				if TOUCHy <= 67 and word.now == 0 then
+					word.now = 1
+					if word.is_fingerprint_slip then
+						w, h = 87, 30
+					else
+						w, h = 93, 44
+					end
+					word.oldtouchx = math.floor(w / 2)
+					word.oldtouchy = math.floor(h / 2)
+				elseif TOUCHy > 67 and word.now == 1 then
+					word.now = 0
+					if word.is_fingerprint_slip then
+						w, h = 170, 60
+					else
+						w, h = 183, 98
+					end
+					word.oldtouchx = math.floor(w / 2)
+					word.oldtouchy = math.floor(h / 2)
+				end
+
+				word.x = TOUCHx - word.oldtouchx
+				word.y = TOUCHy - word.oldtouchy
+
+				local half_w = math.floor(w / 2)
+
+				if word.now == 1 then
+					if word.x < -half_w then word.x = -half_w end
+					if word.x > 320 - half_w then word.x = 320 - half_w end
+					if word.y < 5 then word.y = 5 end
+					if word.y > 60 then word.y = 60 end
+				else
+					if word.x < -half_w then word.x = -half_w end
+					if word.x > 320 - half_w then word.x = 320 - half_w end
+					if word.y < -40 then word.y = -40 end
+					if word.y > 220 then word.y = 220 end
+				end
+			end
+		end
+
+		if (TOUCHx == 0 and TOUCHy == 0) and TOUCH == key then
+			word.oldtouchx = nil
+			word.oldtouchy = nil
+			PLAY_SFX("paper_dragstop")
+		end
+
+		if TOUCH ~= key and (word.oldtouchx ~= nil or word.oldtouchy ~= nil) then
+			word.oldtouchx = nil
+			word.oldtouchy = nil
+		end
+
+		if TOUCH ~= key and word.now == 1 then
+			word.velocity = word.velocity or 0
+			word.gravity = word.gravity or 0
+
+			if word.y <= 23 then
+				word.gravity = 0
+				word.velocity = 0
+			else
+				word.gravity = 0.1
+			end
+
+			if word.y > 24 then
+				word.velocity = word.velocity + word.gravity
+				word.y = word.y - word.velocity
+				if word.y <= 23 then
+					word.y = 23
+					word.velocity = 0
+					word.gravity = 0
+				end
+			end
+		end
+
+		return
+	end
 	if key=="RULEBOOK" then
 		word.x = word.x or 5
 		word.y = word.y or 23
@@ -1654,25 +1900,34 @@ function GET_BULLETIN_LAYOUT(cur_cfg)
 				line1 = l1,
 				line2 = l2,
 				wrapped = is_wrapped,
-				h = is_wrapped and 16 or 7
+				h = is_wrapped and 15 or 7
 			})
 		end
 	end
 
 	local n = #rule_info
 	if n == 0 then
-		return { rules = {} }
+		return { rules = {}, sep_y = 131, notice_y1 = 146, notice_y2 = 158, glory_y = 178 }
 	end
 
-	local total_text_h = 0
-	for _, ri in ipairs(rule_info) do
-		total_text_h = total_text_h + ri.h
+	local gap = 1
+	local start_y = 70
+	if n <= 2 then
+		gap = 8
+		start_y = 74
+	elseif n == 3 then
+		gap = 5
+		start_y = 72
+	elseif n == 4 then
+		gap = 3
+		start_y = 71
+	elseif n == 5 then
+		gap = 1
+		start_y = 70
+	else
+		gap = 1
+		start_y = 69
 	end
-	-- Middle zone between line 68 and line 131 is 62 px high (69..130)
-	local avail_gap = 62 - total_text_h
-	local gap = math.max(2, math.min(8, math.floor(avail_gap / (n + 1))))
-	local total_block_h = total_text_h + (n - 1) * gap
-	local start_y = 69 + math.max(2, math.floor((62 - total_block_h) / 2))
 
 	local cur_y = start_y
 	local layout_rules = {}
@@ -1689,8 +1944,24 @@ function GET_BULLETIN_LAYOUT(cur_cfg)
 		cur_y = ry + ri.h + gap
 	end
 
+	local last_rule_bottom = (cur_y - gap)
+	local sep_y = last_rule_bottom + 3
+	if n <= 3 then
+		sep_y = math.max(sep_y, 131)
+	elseif n == 4 then
+		sep_y = math.max(sep_y, 136)
+	end
+
+	local notice_y1 = sep_y + 4
+	local notice_y2 = notice_y1 + 9
+	local glory_y = math.min(189, math.max(notice_y2 + 11, 186))
+
 	return {
-		rules = layout_rules
+		rules = layout_rules,
+		sep_y = sep_y,
+		notice_y1 = notice_y1,
+		notice_y2 = notice_y2,
+		glory_y = glory_y
 	}
 end
 
@@ -1782,6 +2053,10 @@ function GET_DOC_DESK_BOUNDS(doc, key)
 		w, h = 147, 135
 	elseif key == "ENTRYPERMIT" then
 		w, h = 150, 201
+	elseif key == "FINGERPRINTSLIP" or doc.is_fingerprint_slip then
+		w, h = 170, 60
+	elseif key == "IDENTITYRECORD" or doc.is_identity_record then
+		w, h = 183, 98
 	elseif doc.tex then
 		w = Graphics.getImageWidth(doc.tex)
 		h = Graphics.getImageHeight(doc.tex)
@@ -2168,6 +2443,67 @@ function CHECK_DISCREPANCY(h1, h2)
 			match = true
 			special_key = "foreigners"
 		end
+
+	-- 17. Fingerprint Slip vs Identity Record: Biometric comparison
+	elseif c1 == "BIOMETRIC" and c2 == "BIOMETRIC" and h1.id ~= h2.id then
+		local prints_match = true
+		if PERSON.record_fingerprints and PERSON.fingerprints then
+			for i = 1, 5 do
+				if PERSON.record_fingerprints[i] ~= PERSON.fingerprints[i] then
+					prints_match = false
+					break
+				end
+			end
+		elseif PERSON.fingerprint_id and PERSON.record_fingerprint_id and PERSON.fingerprint_id ~= PERSON.record_fingerprint_id then
+			prints_match = false
+		end
+
+		if prints_match then
+			match = true
+			if PERSON.has_alias then
+				PERSON.name_cleared = true
+				special_key = "alias_cleared"
+			elseif PERSON.photo_verified then
+				PERSON.photo_cleared = true
+				special_key = "photo_cleared"
+			else
+				special_key = "biometric_cleared"
+			end
+		else
+			match = true
+			wrong_id = 12
+			special_key = "biometric_mismatch"
+		end
+
+	-- 18. Fingerprint Slip / Identity Record: Name / Alias cross-referencing
+	elseif (c1 == "NAME" and c2 == "SLIP_RESULT") or (c1 == "BIOMETRIC" and c2 == "NAME") then
+		if PERSON.has_alias and PERSON.alias then
+			match = true
+			PERSON.name_cleared = true
+			special_key = "alias_cleared"
+		elseif (PERSON.record_fingerprint_id and PERSON.fingerprint_id and PERSON.record_fingerprint_id ~= PERSON.fingerprint_id) or (not PERSON.has_alias and WRONGCONST == WRONGTABLE[7]) then
+			match = true
+			wrong_id = 7
+			special_key = "biometric_mismatch"
+		elseif PERSON.is_wanted then
+			match = true
+			special_key = "wanted"
+		end
+
+	-- 19. Fingerprint Slip: Photo / Appearance cross-referencing
+	elseif ((c1 == "PHOTO" or c1 == "FACE") and c2 == "SLIP_RESULT") or (c1 == "BIOMETRIC" and (c2 == "PHOTO" or c2 == "FACE")) then
+		if PERSON.photo_verified then
+			match = true
+			PERSON.photo_cleared = true
+			special_key = "photo_cleared"
+		elseif PERSON.record_fingerprint_id and PERSON.fingerprint_id and PERSON.record_fingerprint_id ~= PERSON.fingerprint_id then
+			match = true
+			wrong_id = 12
+			special_key = "biometric_mismatch"
+		elseif PERSON.is_wanted then
+			match = true
+			special_key = "wanted"
+		end
 	end
 
 	-- Result processing
@@ -2179,10 +2515,17 @@ function CHECK_DISCREPANCY(h1, h2)
 		INSPECTION.flash_timer = 20
 		PLAY_SFX("inspect_interrogateon")
 
-		-- Grave severity (eligible for DETAIN):
-		-- Counterfeits, fake seals, forged cities/districts, wrong photo, embargo, wanted
-		if wrong_id == 5 or wrong_id == 6 or wrong_id == 12 or wrong_id == 16 or wrong_id == 17 or special_key == "embargo" or special_key == "wanted" then
+		if special_key == "alias_cleared" or special_key == "photo_cleared" or special_key == "biometric_cleared" then
+			INSPECTION.interrogated = true
+			INSPECTION.can_detain = false
+			INSPECTION.is_grave = false
+			PLAY_SFX("inspect_highlight")
+		elseif wrong_id == 5 or wrong_id == 6 or wrong_id == 12 or wrong_id == 16 or wrong_id == 17 or special_key == "embargo" or special_key == "wanted" or special_key == "biometric_mismatch" then
 			INSPECTION.is_grave = true
+			if special_key == "biometric_mismatch" or special_key == "wanted" then
+				INSPECTION.can_detain = true
+				INSPECTION.interrogated = true
+			end
 		else
 			INSPECTION.is_grave = false
 		end
@@ -2276,6 +2619,12 @@ function UPDATE_INSPECTION()
 			if INSPECTION.is_grave then
 				INSPECTION.can_detain = true
 			end
+			local r = INSPECTION.match_reason
+			if (r == 7 or r == 12 or r == "wanted" or r == "biometric_mismatch") and SCANNER and not SCANNER.scanned then
+				if not IS_STORY_MODE or (CURRENT_DAY and CURRENT_DAY >= 5) then
+					SCANNER.active = true
+				end
+			end
 		end
 	end
 end
@@ -2284,10 +2633,20 @@ function EXECUTE_DETAIN()
 	local day_cfg = IS_STORY_MODE and GET_DAY_CONFIG(CURRENT_DAY)
 	local has_embargo_violation = (day_cfg and day_cfg.embargo_nation and GET_NATION_NAME(PERSON.passport) == day_cfg.embargo_nation)
 	local has_wanted_violation = (day_cfg and day_cfg.wanted_name and (PERSON.is_wanted or PERSON.name == day_cfg.wanted_name))
+	local is_biometric_fraud = (PERSON and PERSON.record_fingerprint_id and PERSON.fingerprint_id and PERSON.record_fingerprint_id ~= PERSON.fingerprint_id) or (
+		PERSON and PERSON.record_fingerprints and PERSON.fingerprints and (
+			PERSON.record_fingerprints[1] ~= PERSON.fingerprints[1] or
+			PERSON.record_fingerprints[2] ~= PERSON.fingerprints[2] or
+			PERSON.record_fingerprints[3] ~= PERSON.fingerprints[3] or
+			PERSON.record_fingerprints[4] ~= PERSON.fingerprints[4] or
+			PERSON.record_fingerprints[5] ~= PERSON.fingerprints[5]
+		)
+	)
 	local is_valid_detain = INSPECTION.is_grave and (
-		(WRONGCONST ~= "Nothing" and (WRONGCONST == WRONGTABLE[5] or WRONGCONST == WRONGTABLE[6] or WRONGCONST == WRONGTABLE[12] or WRONGCONST == WRONGTABLE[16] or WRONGCONST == WRONGTABLE[17]))
+		(WRONGCONST ~= "Nothing" and (WRONGCONST == WRONGTABLE[5] or WRONGCONST == WRONGTABLE[6] or WRONGCONST == WRONGTABLE[7] or WRONGCONST == WRONGTABLE[12] or WRONGCONST == WRONGTABLE[16] or WRONGCONST == WRONGTABLE[17]))
 		or has_embargo_violation
 		or has_wanted_violation
+		or is_biometric_fraud
 	)
 
 	if not INSPECTION.can_detain or not INSPECTION.interrogated or not is_valid_detain then
@@ -2600,6 +2959,57 @@ function LOAD_IMAGE(word,key)
 			Graphics.drawImage(math.floor(word.x), math.floor(word.y), word.tex)
 			LOAD_TEXT(key)
 		end
+	elseif word.is_fingerprint_slip or key == "FINGERPRINTSLIP" then
+		if word.now == 1 then
+			local rot = word.rot or -0.10
+			local w2 = (word.tex2 and Graphics.getImageWidth(word.tex2)) or 87
+			local h2 = (word.tex2 and Graphics.getImageHeight(word.tex2)) or 30
+			local cx = math.floor(word.x + w2 / 2)
+			local cy = math.floor(word.y + h2 / 2)
+			if Options["Shadow"] == 1 then
+				Graphics.drawRotateImage(cx + 2, cy + 2, word.tex2, rot, SHADOW)
+			end
+			Graphics.drawRotateImage(cx, cy, word.tex2, rot)
+		elseif word.now == 0 then
+			if TOUCH == key and Options["Shadow"] == 1 then
+				Graphics.drawImage(math.floor(word.x + 3), math.floor(word.y + 3), word.tex, SHADOW)
+			end
+			Graphics.drawImage(math.floor(word.x), math.floor(word.y), word.tex)
+			if FINGERPRINTSHEET and PERSON and PERSON.fingerprints then
+				for i = 1, 5 do
+					local fp = PERSON.fingerprints[i] or 0
+					local col = fp % 3
+					local row = math.floor(fp / 3)
+					Graphics.drawPartialImage(math.floor(word.x + 4 + (i - 1) * 32), math.floor(word.y + 13), col * 32, row * 32, 32, 32, FINGERPRINTSHEET)
+				end
+			end
+		end
+	elseif word.is_identity_record or key == "IDENTITYRECORD" then
+		if word.now == 1 then
+			local rot = word.rot or 0.10
+			local w2 = (word.tex2 and Graphics.getImageWidth(word.tex2)) or 93
+			local h2 = (word.tex2 and Graphics.getImageHeight(word.tex2)) or 44
+			local cx = math.floor(word.x + w2 / 2)
+			local cy = math.floor(word.y + h2 / 2)
+			if Options["Shadow"] == 1 then
+				Graphics.drawRotateImage(cx + 2, cy + 2, word.tex2, rot, SHADOW)
+			end
+			Graphics.drawRotateImage(cx, cy, word.tex2, rot)
+		elseif word.now == 0 then
+			if TOUCH == key and Options["Shadow"] == 1 then
+				Graphics.drawImage(math.floor(word.x + 3), math.floor(word.y + 3), word.tex, SHADOW)
+			end
+			Graphics.drawImage(math.floor(word.x), math.floor(word.y), word.tex)
+			if FINGERPRINTSHEET and PERSON and PERSON.record_fingerprints then
+				for i = 1, 5 do
+					local fp = PERSON.record_fingerprints[i] or 0
+					local col = fp % 3
+					local row = math.floor(fp / 3)
+					Graphics.drawPartialImage(math.floor(word.x + 11 + (i - 1) * 32), math.floor(word.y + 38), col * 32, row * 32, 32, 32, FINGERPRINTSHEET)
+				end
+			end
+			LOAD_TEXT(key)
+		end
 	elseif key=="PASSPORT" then 
 		if word.now==1 then
 			if Options["Shadow"]==1 then
@@ -2650,10 +3060,12 @@ function LOAD_IMAGE(word,key)
 				end
 				Graphics.drawImage(word.x, word.y, word.tex2)
 			elseif word.now==0 then
-				if TOUCH == key and Options["Shadow"]==1 then
-					Graphics.drawImage(word.x+3, word.y+3, word.tex, SHADOW)
+				if TOUCH == key then
+					if Options["Shadow"]==1 then
+						Graphics.drawImage(math.floor(word.x + 5), math.floor(word.y + 5), word.tex, SHADOW)
+					end
 				end
-				Graphics.drawImage(word.x, word.y, word.tex)
+				Graphics.drawImage(math.floor(word.x), math.floor(word.y), word.tex)
 				LOAD_TEXT(key)
 			end
 		else
@@ -2867,6 +3279,20 @@ function LOAD_TEXT(key, face)
 		return
 	end
 
+	if (key == "IDENTITYRECORD" or (IDENTITYRECORD and IDENTITYRECORD.key == key)) and IDENTITYRECORD then
+		local sx = math.floor(IDENTITYRECORD.x)
+		local sy = math.floor(IDENTITYRECORD.y)
+		if sy + 14 >= 65 and sy + 14 <= 240 then
+			GPU_DrawText(sx + 45, sy + 14, string.upper(PERSON.name or ""), BLACK, "l", 320, SMALL_FONT, 7)
+		end
+		if sy + 24 >= 65 and sy + 24 <= 240 then
+			local alias_str = (PERSON.has_alias and PERSON.alias and string.upper(PERSON.alias)) or "NONE"
+			local alias_col = (PERSON.has_alias and Color.new(20, 80, 25)) or Color.new(45, 45, 45)
+			GPU_DrawText(sx + 45, sy + 24, alias_str, alias_col, "l", 320, SMALL_FONT, 7)
+		end
+		return
+	end
+
 	if key == "PASSPORT" then
 		local p_data = DOC_TEXT_CACHE.PASSPORT
 		if p_data then
@@ -3004,7 +3430,7 @@ function LOAD_TEXT(key, face)
 		GPU_DrawText(bx + 75, by + 33, "DAY " .. tostring(day_num) .. " - " .. day_date, Color.new(90, 80, 75), "c", 320, SMALL_FONT, 7)
 		GPU_DrawText(bx + 14, by + 52, "DAILY DIRECTIVES:", Color.new(55, 42, 38), "l", 320, SMALL_FONT, 7)
 
-		-- [ZONE 2: DIRECTIVES & RULES (y = 69..130, height 62 px, between line 68 and line 131)]
+		-- [ZONE 2: DIRECTIVES & RULES]
 		local blayout = GET_BULLETIN_LAYOUT(cur_cfg)
 		for _, r in ipairs(blayout.rules) do
 			local ry = by + r.ry
@@ -3012,24 +3438,32 @@ function LOAD_TEXT(key, face)
 			Graphics.fillRect(bx + 14, bx + 17, ry + 2, ry + 5, Color.new(140, 45, 40))
 			if r.wrapped then
 				GPU_DrawText(bx + 20, ry, r.line1, Color.new(45, 38, 34), "l", 320, SMALL_FONT, 7)
-				GPU_DrawText(bx + 20, ry + 9, r.line2, Color.new(45, 38, 34), "l", 320, SMALL_FONT, 7)
+				GPU_DrawText(bx + 20, ry + 8, r.line2, Color.new(45, 38, 34), "l", 320, SMALL_FONT, 7)
 			else
 				GPU_DrawText(bx + 20, ry, r.line1, Color.new(45, 38, 34), "l", 320, SMALL_FONT, 7)
 			end
 		end
 
-		-- [ZONE 3: NOTICE & PROTOCOL FOOTER (y = 132..199, height 68 px, below authentic dotted line at 131)]
-		if cur_cfg and cur_cfg.wanted_name then
-			GPU_DrawText(bx + 75, by + 146, "SPECIAL NOTICE", Color.new(135, 45, 45), "c", 320, SMALL_FONT, 7)
-			GPU_DrawText(bx + 75, by + 158, "FUGITIVE: " .. string.upper(cur_cfg.wanted_name), Color.new(55, 45, 40), "c", 320, SMALL_FONT, 7)
-		elseif cur_cfg and cur_cfg.embargo_nation then
-			GPU_DrawText(bx + 75, by + 146, "SPECIAL NOTICE", Color.new(135, 45, 45), "c", 320, SMALL_FONT, 7)
-			GPU_DrawText(bx + 75, by + 158, "EMBARGO: " .. string.upper(cur_cfg.embargo_nation), Color.new(55, 45, 40), "c", 320, SMALL_FONT, 7)
-		else
-			GPU_DrawText(bx + 75, by + 148, "INSPECTION PROTOCOL ACTIVE", Color.new(110, 100, 95), "c", 320, SMALL_FONT, 7)
-			GPU_DrawText(bx + 75, by + 160, "REPORT ALL DISCREPANCIES", Color.new(110, 100, 95), "c", 320, SMALL_FONT, 7)
+		-- Dynamic dotted separator between Zone 2 and Zone 3
+		local sep_y = by + blayout.sep_y
+		for dx = 0, 148, 2 do
+			Graphics.fillRect(bx + dx, bx + dx + 1, sep_y, sep_y + 1, Color.new(163, 163, 163))
 		end
-		GPU_DrawText(bx + 75, by + 178, "GLORY TO ARSTOTZKA", Color.new(100, 80, 75), "c", 320, SMALL_FONT, 7)
+
+		-- [ZONE 3: NOTICE & PROTOCOL FOOTER]
+		local n1_y = by + blayout.notice_y1
+		local n2_y = by + blayout.notice_y2
+		if cur_cfg and cur_cfg.wanted_name then
+			GPU_DrawText(bx + 75, n1_y, "SPECIAL NOTICE", Color.new(135, 45, 45), "c", 320, SMALL_FONT, 7)
+			GPU_DrawText(bx + 75, n2_y, "FUGITIVE: " .. string.upper(cur_cfg.wanted_name), Color.new(55, 45, 40), "c", 320, SMALL_FONT, 7)
+		elseif cur_cfg and cur_cfg.embargo_nation then
+			GPU_DrawText(bx + 75, n1_y, "SPECIAL NOTICE", Color.new(135, 45, 45), "c", 320, SMALL_FONT, 7)
+			GPU_DrawText(bx + 75, n2_y, "EMBARGO: " .. string.upper(cur_cfg.embargo_nation), Color.new(55, 45, 40), "c", 320, SMALL_FONT, 7)
+		else
+			GPU_DrawText(bx + 75, n1_y, "INSPECTION PROTOCOL ACTIVE", Color.new(110, 100, 95), "c", 320, SMALL_FONT, 7)
+			GPU_DrawText(bx + 75, n2_y, "REPORT ALL DISCREPANCIES", Color.new(110, 100, 95), "c", 320, SMALL_FONT, 7)
+		end
+		GPU_DrawText(bx + 75, by + blayout.glory_y, "GLORY TO ARSTOTZKA", Color.new(100, 80, 75), "c", 320, SMALL_FONT, 7)
 	end
 end
 function STAMP_CODE()
@@ -3527,6 +3961,27 @@ function RANDOMIZE()
 
 	PERSON.transcript_mismatch = false
 	PERSON.is_embargoed = false
+	PERSON.fingerprints = {
+		math.random(0, 29),
+		math.random(0, 29),
+		math.random(0, 29),
+		math.random(0, 29),
+		math.random(0, 29)
+	}
+	PERSON.record_fingerprints = {
+		PERSON.fingerprints[1],
+		PERSON.fingerprints[2],
+		PERSON.fingerprints[3],
+		PERSON.fingerprints[4],
+		PERSON.fingerprints[5]
+	}
+	PERSON.fingerprint_id = PERSON.fingerprints[1]
+	PERSON.record_fingerprint_id = PERSON.fingerprints[1]
+	PERSON.has_alias = false
+	PERSON.alias = nil
+	PERSON.photo_verified = false
+	PERSON.name_cleared = false
+	PERSON.photo_cleared = false
 	PERSON.DOB = DOBGENERATOR()
 	PERSON.COL = FORDOCUMENT[PERSON.passport][math.random(1,3)]
 	PERSON.passEXP=DATEGENERATOR("y")
@@ -3632,6 +4087,29 @@ function RANDOMIZE()
 			PERSON.idcardfirstname,PERSON.idcardlastname=NAMEGENERATOR()
 			PERSON.permitname = tostring(PERSON.idcardfirstname.." "..PERSON.idcardlastname)
 		end
+		if (not IS_STORY_MODE or (CURRENT_DAY and CURRENT_DAY >= 5)) and math.random(1, 2) == 1 then
+			PERSON.has_alias = true
+			PERSON.alias = PERSON.permitname or tostring(PERSON.idcardfirstname.." "..PERSON.idcardlastname)
+			PERSON.record_fingerprints = {
+				PERSON.fingerprints[1],
+				PERSON.fingerprints[2],
+				PERSON.fingerprints[3],
+				PERSON.fingerprints[4],
+				PERSON.fingerprints[5]
+			}
+			PERSON.record_fingerprint_id = PERSON.fingerprint_id
+		else
+			PERSON.has_alias = false
+			PERSON.alias = nil
+			PERSON.record_fingerprints = {
+				PERSON.fingerprints[1],
+				(PERSON.fingerprints[2] + math.random(1, 10)) % 30,
+				PERSON.fingerprints[3],
+				(PERSON.fingerprints[4] + math.random(1, 10)) % 30,
+				PERSON.fingerprints[5]
+			}
+			PERSON.record_fingerprint_id = PERSON.record_fingerprints[2]
+		end
 		elseif wrong==8 then
 		if PERSON.GNDR=="M" then 
 			PERSON.GNDR="F"
@@ -3671,6 +4149,27 @@ function RANDOMIZE()
 		PERSON.face = PERSON.idcardface
 		if PERSON.idcardface==PERSON.realface then
 			wrong=1
+		end
+		if (not IS_STORY_MODE or (CURRENT_DAY and CURRENT_DAY >= 5)) and math.random(1, 2) == 1 then
+			PERSON.photo_verified = true
+			PERSON.record_fingerprints = {
+				PERSON.fingerprints[1],
+				PERSON.fingerprints[2],
+				PERSON.fingerprints[3],
+				PERSON.fingerprints[4],
+				PERSON.fingerprints[5]
+			}
+			PERSON.record_fingerprint_id = PERSON.fingerprint_id
+		else
+			PERSON.photo_verified = false
+			PERSON.record_fingerprints = {
+				(PERSON.fingerprints[1] + math.random(1, 10)) % 30,
+				PERSON.fingerprints[2],
+				(PERSON.fingerprints[3] + math.random(1, 10)) % 30,
+				PERSON.fingerprints[4],
+				PERSON.fingerprints[5]
+			}
+			PERSON.record_fingerprint_id = PERSON.record_fingerprints[1]
 		end
 		elseif wrong==14 then
 		PERSON.passEXP=DATEGENERATOR("n")
@@ -3942,7 +4441,11 @@ function CHECK_EMPTYTABLE()
 			end
 		end
 
-		local is_invalid_entrant = (WRONGCONST ~= "Nothing") or has_embargo_violation or has_wanted_violation or has_transcript_violation
+		local is_name_cleared = (PERSON and PERSON.name_cleared and (WRONGCONST == WRONGTABLE[7] or string.find(string.lower(WRONGCONST or ""), "name") ~= nil))
+		local is_photo_cleared = (PERSON and PERSON.photo_cleared and (WRONGCONST == WRONGTABLE[12] or string.find(string.lower(WRONGCONST or ""), "photo") ~= nil))
+		local is_cleared_infraction = is_name_cleared or is_photo_cleared
+
+		local is_invalid_entrant = ((WRONGCONST ~= "Nothing" and not is_cleared_infraction)) or has_embargo_violation or has_wanted_violation or has_transcript_violation
 
 		if stamp == "YES" and not is_invalid_entrant and CheckPoint==0 then
 			table.insert(PENDING_REWARDS, {
@@ -4279,6 +4782,16 @@ while true do
 				end
 			end
 		end
+		-- Update Identity Record mechanical print feed
+		if IDENTITYRECORD and IDENTITYRECORD.status == "PRINTING" then
+			if IDENTITYRECORD.y < IDENTITYRECORD.target_y then
+				IDENTITYRECORD.y = IDENTITYRECORD.y + 2
+			else
+				IDENTITYRECORD.y = IDENTITYRECORD.target_y
+				IDENTITYRECORD.status = "IDLE"
+				PLAY_SFX("printer_line")
+			end
+		end
 		if INSPECTION.active then
 			if TOUCH == "ACTIVE" and TOUCHx > 0 and TOUCHy > 0 then
 				-- Check inspection toggle button (x=288, y=216, w=32, h=24)
@@ -4297,6 +4810,13 @@ while true do
 				elseif INSPECTION.can_detain and TOUCHx >= 245 and TOUCHx <= 320 and TOUCHy >= 0 and TOUCHy <= 30 then
 					EXECUTE_DETAIN()
 					TOUCH = "DETAIN_BTN"
+				-- Check scanner pad (x=75..107, y=38..62)
+				elseif SCANNER and SCANNER.active and TOUCHx >= SCANNER.x and TOUCHx <= SCANNER.x + SCANNER.w and TOUCHy >= SCANNER.y and TOUCHy <= SCANNER.y + SCANNER.h then
+					PLAY_SFX("button_down")
+					SCANNER.active = false
+					SCANNER.scanned = true
+					SPAWN_FINGERPRINT_SLIP()
+					TOUCH = "SCANNER_PAD"
 				else
 					-- Route to hotspot selection
 					if INSPECTION_TOUCH(TOUCHx, TOUCHy) then
@@ -4315,16 +4835,25 @@ while true do
 				PLAY_SFX("inspect_open")
 				TOUCH = "INSPECT_TOGGLE"
 			else
-				for i=1, #DESKTOP do
-					if TOUCH == DESKTOP[i] then 
-						table.remove(DESKTOP,i) 
-						table.insert(DESKTOP,1,TOUCH)
+				-- Check scanner pad (x=75..107, y=38..62)
+				if SCANNER and SCANNER.active and TOUCH == "ACTIVE" and TOUCHx >= SCANNER.x and TOUCHx <= SCANNER.x + SCANNER.w and TOUCHy >= SCANNER.y and TOUCHy <= SCANNER.y + SCANNER.h then
+					PLAY_SFX("button_down")
+					SCANNER.active = false
+					SCANNER.scanned = true
+					SPAWN_FINGERPRINT_SLIP()
+					TOUCH = "SCANNER_PAD"
+				else
+					for i=1, #DESKTOP do
+						if TOUCH == DESKTOP[i] then 
+							table.remove(DESKTOP,i) 
+							table.insert(DESKTOP,1,TOUCH)
+						end
 					end
-				end
-				STAMP_CODE()
-				for i = 1, #DESKTOP do
-					local itm = ITEM_BY_KEY[DESKTOP[i]]
-					if itm then TOUCH_CHECK(itm, itm.key) end
+					STAMP_CODE()
+					for i = 1, #DESKTOP do
+						local itm = ITEM_BY_KEY[DESKTOP[i]]
+						if itm then TOUCH_CHECK(itm, itm.key) end
+					end
 				end
 			end
 		end
@@ -4348,6 +4877,13 @@ while true do
 			end
 		end
 		Graphics.drawPartialImage(0, 0, 0, 0, 320, 77, BKG_BTMS)
+		if SCANNER_PAD_TEX then
+			if SCANNER and SCANNER.active then
+				Graphics.drawPartialImage(SCANNER.x, SCANNER.y, 0, 24, SCANNER.w, SCANNER.h, SCANNER_PAD_TEX)
+			else
+				Graphics.drawPartialImage(SCANNER.x, SCANNER.y, 0, 0, SCANNER.w, SCANNER.h, SCANNER_PAD_TEX)
+			end
+		end
 		for i = #DESKTOP, 1, -1 do
 			local itm = ITEM_BY_KEY[DESKTOP[i]]
 			if itm and itm.now == 1 then LOAD_IMAGE(itm, itm.key) end
@@ -5017,6 +5553,8 @@ while true do
 		
 		-- Directives / Rules (as present in day_cfg.bulletin_rules)
 		local rule_y = 65
+		local num_brules = (day_cfg and day_cfg.bulletin_rules and #day_cfg.bulletin_rules) or 0
+		local rule_step = (num_brules >= 5) and 14 or 18
 		for idx, rule in ipairs(day_cfg.bulletin_rules) do
 			if BULLETIN_BTM_TEX == nil then
 				Graphics.fillRect(22, 25, rule_y + 1, rule_y + 5, Color.new(82, 34, 34))
@@ -5026,7 +5564,7 @@ while true do
 				rule_col = Color.new(140, 35, 35)
 			end
 			GPU_DrawText(28, rule_y, rule, rule_col, "l", 320, SMALL_FONT, 7)
-			rule_y = rule_y + 18
+			rule_y = rule_y + rule_step
 		end
 		
 		-- Shift info line

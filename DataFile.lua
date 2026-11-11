@@ -360,6 +360,23 @@ DAYS_CONFIG = {
 		allowed_warnings = 1,
 		daily_expenses   = 20,
 		duration_sec     = 180
+	},
+	[5] = {
+		date = "27.11.1982",
+		headline = "BIOMETRIC IDENTIFICATION REQUIRED",
+		subline = "Fingerprint scanner installed to resolve conflicting identities.",
+		bulletin_rules = {
+			"ALL FOREIGNERS REQUIRE ENTRY PERMIT",
+			"WORKERS REQUIRE VALID WORK PASS",
+			"FINGERPRINT SUSPECTS AND CONFLICTING IDENTITIES",
+			"CROSS-REFERENCE SLIP IN INSPECTION MODE"
+		},
+		allow_foreigners = true,
+		require_permit   = true,
+		require_workpass = true,
+		allowed_warnings = 1,
+		daily_expenses   = 20,
+		duration_sec     = 180
 	}
 }
 
@@ -367,7 +384,7 @@ function GET_DAY_CONFIG(day)
 	day = tonumber(day) or 1
 	if day < 1 then day = 1 end
 
-	if day <= 4 and DAYS_CONFIG and DAYS_CONFIG[day] then
+	if day <= 5 and DAYS_CONFIG and DAYS_CONFIG[day] then
 		local cfg = DAYS_CONFIG[day]
 		if not cfg.daily_expenses then
 			cfg.daily_expenses = 20
@@ -378,7 +395,7 @@ function GET_DAY_CONFIG(day)
 		return cfg
 	end
 
-	-- Procedural Deterministic Generator for Days 5+
+	-- Procedural Deterministic Generator for Days 6+
 	local tier = 1
 	local daily_expenses = 20
 	if day >= 16 then
@@ -389,9 +406,9 @@ function GET_DAY_CONFIG(day)
 		daily_expenses = 25
 	end
 
-	-- Calendar Date calculation (base: 27.11.1982 for Day 5)
-	local offset = day - 5
-	local d = 27 + offset
+	-- Calendar Date calculation (base: 28.11.1982 for Day 6)
+	local offset = day - 6
+	local d = 28 + offset
 	local m = 11
 	local y = 1982
 	while d > 30 do
@@ -410,7 +427,8 @@ function GET_DAY_CONFIG(day)
 	local wanted_name = nil
 	local bulletin_rules = {
 		"ALL FOREIGNERS REQUIRE ENTRY PERMIT",
-		"WORKERS REQUIRE VALID WORK PASS"
+		"WORKERS REQUIRE VALID WORK PASS",
+		"FINGERPRINT SUSPECTS AND ALIASES"
 	}
 
 	local FOREIGN_NATIONS = { "ANTEGRIA", "IMPOR", "KOLECHIA", "REPUBLIA", "UNITED FEDERATION", "OBRISTAN" }
@@ -560,6 +578,22 @@ INSPECTION_HOTSPOTS = {
 	},
 	ENTRYTICKET = {
 		{ id = "TICKET.EXP_DATE", cat = "EXP_DATE", xo = 65, yo = 26,  w = 60,  h = 14 }
+	},
+	FINGERPRINTSLIP = {
+		{ id = "SLIP.PRINT_1", cat = "BIOMETRIC", xo = 4,   yo = 13, w = 32, h = 32 },
+		{ id = "SLIP.PRINT_2", cat = "BIOMETRIC", xo = 36,  yo = 13, w = 32, h = 32 },
+		{ id = "SLIP.PRINT_3", cat = "BIOMETRIC", xo = 68,  yo = 13, w = 32, h = 32 },
+		{ id = "SLIP.PRINT_4", cat = "BIOMETRIC", xo = 100, yo = 13, w = 32, h = 32 },
+		{ id = "SLIP.PRINT_5", cat = "BIOMETRIC", xo = 132, yo = 13, w = 32, h = 32 }
+	},
+	IDENTITYRECORD = {
+		{ id = "RECORD.NAME",    cat = "NAME",        xo = 45,  yo = 14, w = 125, h = 10 },
+		{ id = "RECORD.ALIAS",   cat = "SLIP_RESULT", xo = 45,  yo = 24, w = 125, h = 10 },
+		{ id = "RECORD.PRINT_1", cat = "BIOMETRIC",   xo = 11,  yo = 38, w = 32,  h = 32 },
+		{ id = "RECORD.PRINT_2", cat = "BIOMETRIC",   xo = 43,  yo = 38, w = 32,  h = 32 },
+		{ id = "RECORD.PRINT_3", cat = "BIOMETRIC",   xo = 75,  yo = 38, w = 32,  h = 32 },
+		{ id = "RECORD.PRINT_4", cat = "BIOMETRIC",   xo = 107, yo = 38, w = 32,  h = 32 },
+		{ id = "RECORD.PRINT_5", cat = "BIOMETRIC",   xo = 139, yo = 38, w = 32,  h = 32 }
 	}
 }
 
@@ -652,19 +686,19 @@ ENTRANT_RESPONSES = {
 	[4]        = { "There is a mistake.", "A clerical error!" },
 	[5]        = { "That is where I was born!", "The city is real!" },
 	[6]        = { "I always lived there!", "Check records again." },
-	[7]        = { "I changed my name.", "It is a family name." },
+	[7]        = { "That is my alias.", "I use another name.", "Check my fingerprints!" },
 	[8]        = { "It is a mistake.", "It is really me!" },
 	[9]        = { "Numbers must match!", "A typo by the office!" },
 	[10]       = { "I grew since then.", "The card is old." },
 	[11]       = { "Lost weight recently.", "The scale was wrong." },
-	[12]       = { "It is an old photo.", "Still me, I swear!" },
+	[12]       = { "I had facial surgery.", "Old photo, but it is me.", "Take my prints!" },
 	[14]       = { "No time to renew it!", "Did not realize!" },
 	[15]       = { "Permit is still valid!", "Make an exception!" },
 	[16]       = { "Ministry gave me this!", "It is authentic!" },
 	[17]       = { "Stamped at the desk!", "This is legitimate!" },
 	[18]       = { "The permit is correct.", "I made a mistake!" },
 	embargo    = { "Not a threat!", "Did nothing wrong!" },
-	wanted     = { "Wrong person!", "I am innocent!" },
+	wanted     = { "Wrong person!", "I am innocent, test my prints!" },
 	foreigners = { "Just visiting!", "Please let me in!" },
 	default    = { "I do not understand.", "Must be a mistake." }
 }
